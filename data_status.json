@@ -1,0 +1,8 @@
+{
+  "mode": "real",
+  "label": "Real Argo + Satellite Data (Validated)",
+  "n_train_rows": 36,
+  "n_test_rows": 9,
+  "wmo_count": 45,
+  "validation_passed": true
+}

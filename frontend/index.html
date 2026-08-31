@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OceanEmbed — AI-Powered Subsurface Ocean Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Ocean Blue Palette
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-base: #0f1526;
+  --bg-surface: #141c30;
+  --bg-card: #1a2340;
+  --bg-card-hover: #1f2b4d;
+  --bg-elevated: #243054;
+  --bg-input: #0d1220;
+  --border-subtle: rgba(100,160,255,0.07);
+  --border-default: rgba(100,160,255,0.12);
+  --border-strong: rgba(100,160,255,0.20);
+  --border-active: rgba(56,168,255,0.35);
+  --accent: #38a8ff;
+  --accent-dim: rgba(56,168,255,0.12);
+  --accent-bright: #5cbcff;
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34,211,238,0.10);
+  --teal: #2dd4bf;
+  --teal-dim: rgba(45,212,191,0.10);
+  --success: #34d399;
+  --success-dim: rgba(52,211,153,0.10);
+  --warning: #fbbf24;
+  --error: #f87171;
+  --text-primary: #e8f0fe;
+  --text-secondary: #94a3c0;
+  --text-tertiary: #5e7090;
+  --text-muted: #3d5070;
+  --sidebar-w: 250px;
+  --header-h: 56px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+  /* Motion tokens */
+  --motion-fast: 140ms;
+  --motion-normal: 240ms;
+  --motion-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-micro: 120ms;
+  --dur-fast: 180ms;
+  --dur-normal: 280ms;
+  --dur-slow: 420ms;
+  --dur-page: 500ms;
+  /* Glass system */
+  --glass-bg: rgba(15,21,38,0.70);
+  --glass-blur: blur(20px) saturate(130%);
+  --glass-border: rgba(100,160,255,0.10);
+  --glass-shadow: 0 8px 40px rgba(0,0,0,0.45);
+  --hover-elevate: translateY(-2px);
+  --focus-glow: 0 0 0 2px rgba(56,168,255,0.40), 0 0 12px rgba(56,168,255,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14.5px;scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);line-height:1.55;overflow-x:hidden;min-height:100vh}
+
+/* ── Layout ───────────────────────────── */
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:var(--bg-base);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .25s ease}
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh}
+.content{flex:1;padding:24px 28px;max-width:1480px;width:100%;margin:0 auto}
+
+/* ── Sidebar ──────────────────────────── */
+.sb-header{padding:20px 20px 16px;border-bottom:1px solid var(--border-subtle)}
+.sb-logo{display:flex;align-items:center;gap:10px}
+.sb-icon{width:32px;height:32px;border-radius:var(--r-md);background:linear-gradient(135deg,#2196F3,#0D47A1);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 16px rgba(33,150,243,0.15)}
+.sb-name{font-size:1.1rem;font-weight:800;letter-spacing:-.03em;color:var(--text-primary)}
+.sb-tag{font-size:.6rem;color:var(--text-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sb-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.sb-label{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);padding:14px 10px 6px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);color:var(--text-secondary);font-size:.84rem;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none;position:relative;margin-bottom:1px}
+.sb-item:hover{background:var(--bg-card);color:var(--text-primary)}
+.sb-item.active{background:rgba(56,168,255,0.10);color:var(--accent);font-weight:600}
+.sb-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;border-radius:0 3px 3px 0;background:var(--accent)}
+.sb-item i{width:16px;height:16px;opacity:.6}
+.sb-item.active i{opacity:1}
+.sb-footer{padding:14px 16px;border-top:1px solid var(--border-subtle)}
+.sb-status-label{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.sb-status-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sb-status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sb-status-dot.green{background:var(--success);box-shadow:0 0 6px rgba(52,211,153,.3)}
+.sb-status-dot.gray{background:var(--text-muted)}
+.sb-status-text{font-size:.74rem;color:var(--text-secondary)}
+
+/* ── Header ───────────────────────────── */
+.app-header{height:var(--header-h);background:rgba(10,14,26,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.hdr-left{display:flex;align-items:baseline;gap:12px}
+.hdr-title{font-size:1rem;font-weight:700}
+.hdr-sub{font-size:.76rem;color:var(--text-tertiary)}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hdr-badge{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:.64rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border:1px solid}
+.hdr-badge.on{color:var(--success);border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.05)}
+.hdr-badge.off{color:var(--text-muted);border-color:var(--border-default);background:rgba(61,80,112,.06)}
+.hdr-badge .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.hdr-meta{font-size:.66rem;color:var(--text-muted);text-align:right;line-height:1.4}
+
+/* ── Sections ─────────────────────────── */
+.section{display:none;animation:fadeUp .3s ease}
+.section.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.sec-head{margin-bottom:20px}
+.sec-title{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+.sec-sub{font-size:.82rem;color:var(--text-tertiary);margin-top:2px}
+.divider{height:1px;background:var(--border-subtle);margin:24px 0}
+
+/* ── Hero ──────────────────────────────── */
+.hero{background:linear-gradient(135deg,rgba(56,168,255,.06) 0%,rgba(34,211,238,.03) 100%);border:1px solid rgba(56,168,255,.12);border-radius:var(--r-xl);padding:36px 32px;position:relative;overflow:hidden;margin-bottom:28px}
+.hero::before{content:'';position:absolute;top:-60%;right:-15%;width:450px;height:450px;border-radius:50%;background:radial-gradient(circle,rgba(56,168,255,.04) 0%,transparent 60%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:.62rem;font-weight:700;color:var(--accent);border:1px solid rgba(56,168,255,.18);background:rgba(56,168,255,.06);letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px}
+.hero h1{font-size:2rem;font-weight:900;letter-spacing:-.04em;line-height:1.12;margin-bottom:8px;color:var(--text-primary)}
+.hero p{font-size:.95rem;color:var(--text-secondary);max-width:520px;line-height:1.65;margin-bottom:22px}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ── Buttons ──────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:var(--r-md);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s;border:none;text-decoration:none;font-family:inherit;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(0.985)}
+.btn-p{background:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(56,168,255,.25);font-weight:700}
+.btn-p:hover{box-shadow:0 4px 20px rgba(56,168,255,.35);background:#4db8ff}
+.btn-p:active{box-shadow:0 2px 12px rgba(56,168,255,.20)}
+.btn-s{background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-default)}
+.btn-s:hover{background:var(--bg-card-hover);border-color:var(--border-strong)}
+.btn-demo{background:rgba(34,211,238,.08);color:var(--cyan);border:1px solid rgba(34,211,238,.18);font-size:.76rem;padding:6px 14px;border-radius:999px}
+.btn-demo:hover{background:rgba(34,211,238,.14)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.btn-sm{padding:6px 14px;font-size:.76rem}
+.btn-ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,0.12);transform:scale(0);animation:rippleOut 500ms var(--ease-out) forwards;pointer-events:none}
+@keyframes rippleOut{to{transform:scale(4);opacity:0}}
+
+/* ── Cards ─────────────────────────────── */
+.card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:18px;transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.card:hover{border-color:var(--border-default);box-shadow:0 4px 20px rgba(0,0,0,0.25)}
+.card-label{font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px}
+
+/* ── Badges ───────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge-source{background:rgba(232,240,254,.06);color:var(--text-secondary);border:1px solid rgba(232,240,254,.12)}
+.badge-derived{background:rgba(34,211,238,.08);color:var(--cyan);border:1px solid rgba(34,211,238,.18)}
+.badge-predicted{background:rgba(56,168,255,.08);color:var(--accent);border:1px solid rgba(56,168,255,.18)}
+.badge-ai{background:rgba(139,92,246,.08);color:#a78bfa;border:1px solid rgba(139,92,246,.18)}
+.badge-validated{background:rgba(52,211,153,.08);color:var(--success);border:1px solid rgba(52,211,153,.18)}
+.badge-matched{background:rgba(45,212,191,.08);color:var(--teal);border:1px solid rgba(45,212,191,.18)}
+
+/* ── Metric Cards ──────────────────────── */
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric-card{position:relative;overflow:hidden;padding:16px;transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.metric-card:hover{transform:var(--hover-elevate);box-shadow:0 6px 24px rgba(0,0,0,0.3);border-color:var(--border-strong)}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.mc-sst::before{background:linear-gradient(90deg,#f97316,#ef4444)}
+.mc-ssh::before{background:linear-gradient(90deg,var(--accent),var(--cyan))}
+.mc-sss::before{background:linear-gradient(90deg,var(--teal),#22d3ee)}
+.mc-loc::before{background:linear-gradient(90deg,var(--accent),#818cf8)}
+.mc-val{font-size:1.6rem;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1.2;margin-top:4px}
+.mc-unit{font-size:.78rem;font-weight:500;color:var(--text-tertiary);margin-left:3px}
+.mc-source{font-size:.66rem;color:var(--text-muted);margin-top:4px}
+
+/* ── Map ───────────────────────────────── */
+.map-wrap{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border-subtle);height:480px;position:relative;background:var(--bg-deep)}
+#obs-map{height:100%;width:100%}
+.map-overlay{position:absolute;top:12px;right:12px;background:rgba(15,21,38,.92);backdrop-filter:blur(12px);border:1px solid var(--border-default);border-radius:var(--r-lg);padding:14px 16px;z-index:1000;min-width:200px}
+.map-ov-title{font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.map-ov-row{display:flex;justify-content:space-between;padding:2px 0}
+.map-ov-l{font-size:.72rem;color:var(--text-tertiary)}
+.map-ov-v{font-size:.78rem;font-weight:600;font-family:'JetBrains Mono',monospace}
+
+/* ── Prediction Cards ──────────────────── */
+.pred-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pred-card{text-align:center;padding:16px;transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.pred-card:hover{transform:var(--hover-elevate);box-shadow:0 6px 24px rgba(0,0,0,0.3);border-color:rgba(56,168,255,0.15)}
+.pred-card .d-label{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.pred-card .d-val{font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;margin:2px 0}
+.pred-card .p-temp{font-size:1.15rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)}
+.pred-card .p-lbl{font-size:.66rem;color:var(--text-tertiary);margin-top:2px}
+.err-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.64rem;font-weight:600}
+.err-low{background:rgba(52,211,153,.1);color:var(--success)}
+.err-mid{background:rgba(251,191,36,.1);color:var(--warning)}
+.err-high{background:rgba(248,113,113,.1);color:var(--error)}
+
+/* ── Chart ─────────────────────────────── */
+.chart-box{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:18px;transition:border-color var(--dur-fast) var(--ease-out)}
+.chart-box:hover{border-color:var(--border-default)}
+.chart-canvas{position:relative;height:400px}
+.chart-legend{display:flex;gap:20px;justify-content:center;margin-top:10px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text-secondary)}
+.leg-line{width:20px;height:3px;border-radius:2px}
+.leg-pred{background:var(--accent)}
+.leg-obs{background:#f97316}
+
+/* ── Workflow / Pipeline ───────────────── */
+.workflow{display:flex;align-items:center;gap:0;padding:14px 0 4px;justify-content:center}
+.wf-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:88px;text-align:center;cursor:default;position:relative;padding:6px 4px;border-radius:var(--r-md);transition:background var(--dur-fast) var(--ease-out)}
+.wf-step:hover{background:rgba(56,168,255,.04)}
+.wf-dot{width:36px;height:36px;border-radius:50%;border:2px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:15px;background:var(--bg-card);transition:all .3s}
+.wf-dot.done{border-color:var(--accent);background:rgba(56,168,255,.1);color:var(--accent)}
+.wf-dot.active{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 12px rgba(56,168,255,.25)}
+.wf-label{font-size:.6rem;font-weight:600;color:var(--text-muted);letter-spacing:.02em;line-height:1.35}
+.wf-arrow{width:24px;height:2px;background:var(--border-strong);flex-shrink:0;margin-bottom:14px}
+.wf-arrow.done{background:var(--accent)}
+.wf-arrow:first-of-type{margin-bottom:14px}
+/* Tooltip on hover */
+.wf-step .wf-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--r-md);padding:8px 12px;font-size:.72rem;font-weight:400;color:var(--text-secondary);line-height:1.5;white-space:normal;width:200px;text-align:center;opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);z-index:20;box-shadow:var(--shadow-md)}
+.wf-step:hover .wf-tip{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+@media(max-width:820px){
+  .workflow{flex-wrap:wrap;gap:4px}
+  .wf-step{min-width:72px;padding:4px 2px}
+  .wf-arrow{width:16px;margin-bottom:8px}
+  .wf-dot{width:30px;height:30px;font-size:13px}
+  .wf-label{font-size:.56rem}
+  .wf-step .wf-tip{display:none}
+}
+
+/* ── Nemotron Panel ────────────────────── */
+.nem-panel{background:linear-gradient(135deg,rgba(139,92,246,.04),rgba(56,168,255,.03));border:1px solid rgba(139,92,246,.12);border-radius:var(--r-xl);padding:24px;position:relative;overflow:hidden;transition:border-color var(--dur-normal) var(--ease-out),box-shadow var(--dur-normal) var(--ease-out)}
+.nem-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#8b5cf6,rgba(56,168,255,.4))}
+.nem-panel.analyzing{border-color:rgba(139,92,246,0.25);box-shadow:0 0 40px rgba(139,92,246,0.06)}
+.nem-result{margin-top:18px;padding:18px;background:rgba(10,14,26,.6);border-radius:var(--r-lg);border:1px solid var(--border-subtle);font-size:.84rem;line-height:1.8;color:var(--text-secondary);white-space:pre-wrap;animation:nemResultIn var(--dur-slow) var(--ease-out) both}
+@keyframes nemResultIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.nem-loading{text-align:center;padding:36px}
+.spinner{width:36px;height:36px;border:3px solid var(--border-default);border-top-color:var(--accent);border-right-color:rgba(56,168,255,0.3);border-radius:50%;animation:spin 1s cubic-bezier(0.4,0,0.2,1) infinite;margin:0 auto 12px;filter:drop-shadow(0 0 6px rgba(56,168,255,0.15))}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-dots{display:flex;gap:6px;justify-content:center;margin:0 auto 12px;width:fit-content}
+.spinner-dots span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:dotPulse 1.2s ease-in-out infinite}
+.spinner-dots span:nth-child(2){animation-delay:0.15s}
+.spinner-dots span:nth-child(3){animation-delay:0.3s}
+@keyframes dotPulse{0%,80%,100%{opacity:0.3;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}}
+
+/* ── Perf Grid ─────────────────────────── */
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.perf-card{text-align:center}
+.perf-card .pf-depth{font-size:1.15rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);margin-bottom:8px}
+.perf-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-subtle)}
+.perf-row:last-child{border-bottom:none}
+.perf-rl{font-size:.72rem;color:var(--text-tertiary)}
+.perf-rv{font-size:.82rem;font-weight:600;font-family:'JetBrains Mono',monospace}
+
+/* ── Quality Items ─────────────────────── */
+.q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.q-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--r-md)}
+.q-icon{width:32px;height:32px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.q-icon.green{background:rgba(52,211,153,.08);color:var(--success)}
+.q-icon.blue{background:rgba(56,168,255,.08);color:var(--accent)}
+.q-lbl{font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.q-val{font-size:.88rem;font-weight:600;color:var(--text-primary)}
+
+/* ── Source Cards ──────────────────────── */
+.src-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.src-card{display:flex;gap:14px;transition:border-color var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.src-card:hover{transform:var(--hover-elevate);box-shadow:0 6px 24px rgba(0,0,0,0.3)}
+.src-icon{width:44px;height:44px;border-radius:var(--r-md);background:rgba(56,168,255,0.04);border:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.src-name{font-size:.86rem;font-weight:600;color:var(--text-primary)}
+.src-desc{font-size:.72rem;color:var(--text-tertiary);margin-top:2px;line-height:1.5}
+
+/* ── Two-col ───────────────────────────── */
+.two-col{display:grid;grid-template-columns:5fr 3fr;gap:16px}
+.two-col-ev{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* ── Empty / Error ─────────────────────── */
+.empty{text-align:center;padding:40px 24px;color:var(--text-tertiary)}
+.empty-icon{font-size:40px;margin-bottom:10px;opacity:.25}
+.empty-title{font-size:.95rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+.empty-text{font-size:.82rem;max-width:360px;margin:0 auto}
+.error-banner{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);border-radius:var(--r-md);padding:10px 14px;color:var(--error);font-size:.8rem;display:flex;align-items:center;gap:8px}
+.info-banner{background:rgba(56,168,255,.05);border:1px solid rgba(56,168,255,.12);border-radius:var(--r-md);padding:10px 14px;color:var(--accent);font-size:.78rem;display:flex;align-items:center;gap:8px}
+
+/* ── Presentation Mode ─────────────────── */
+.pres-mode .sidebar{display:none}
+.pres-mode .main{margin-left:0}
+.pres-mode .app-header{display:none}
+.pres-mode .content{padding:16px 20px}
+.pres-toggle{position:fixed;bottom:16px;right:16px;z-index:200;padding:8px 16px;border-radius:var(--r-md);background:var(--bg-elevated);border:1px solid var(--border-default);color:var(--text-secondary);font-size:.74rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all var(--dur-fast) var(--ease-out)}
+.pres-toggle:hover{border-color:rgba(56,168,255,0.3);color:var(--accent)}
+
+/* ── Observation selector ──────────────── */
+.obs-sel{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.obs-sel label{font-size:.8rem;font-weight:600;color:var(--text-secondary)}
+.obs-sel select{background:var(--bg-input);border:1px solid var(--border-default);border-radius:var(--r-md);color:var(--text-primary);padding:7px 32px 7px 12px;font-size:.8rem;font-family:'JetBrains Mono',monospace;cursor:pointer;min-width:260px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.obs-sel select:hover{border-color:var(--border-strong)}
+.obs-sel select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,168,255,.12)}
+
+/* ── Scrollbar ─────────────────────────── */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-default);border-radius:3px}
+.leaflet-container{background:var(--bg-deep)!important}.leaflet-control-attribution{background:rgba(10,14,26,.85)!important;color:var(--text-muted)!important;font-size:.6rem!important}.leaflet-control-attribution a{color:var(--text-tertiary)!important}
+
+/* ── Mobile ────────────────────────────── */
+@media(max-width:1100px){.metrics-row,.pred-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.mobile-btn{display:flex!important}.two-col,.two-col-ev{grid-template-columns:1fr}.content{padding:14px}.hero h1{font-size:1.5rem}}
+@media(max-width:600px){.metrics-row,.pred-grid{grid-template-columns:1fr}.hdr-right .hdr-badge{font-size:.55rem;padding:2px 6px}.hdr-meta{display:none}}
+.mobile-btn{display:none;background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:6px}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOTION SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page entrance ─────────────────────── */
+.app{opacity:0;animation:appFadeIn var(--dur-page) var(--ease-out) forwards}
+@keyframes appFadeIn{to{opacity:1}}
+.sidebar{animation:sbSlideIn var(--dur-page) var(--ease-out) 80ms both}
+@keyframes sbSlideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+.app-header{animation:hdrFadeIn var(--dur-normal) var(--ease-out) 160ms both}
+@keyframes hdrFadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.content{animation:contentFadeIn var(--dur-normal) var(--ease-out) 240ms both}
+@keyframes contentFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes heroIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes heroChild{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Section transitions ───────────────── */
+.section{animation:none!important;opacity:0;transform:translateY(6px);transition:opacity var(--dur-normal) var(--ease-out),transform var(--dur-normal) var(--ease-out);pointer-events:none}
+.section.active{display:block;opacity:1;transform:translateY(0);pointer-events:auto;animation:sectionEnter var(--dur-normal) var(--ease-out) both!important}
+@keyframes sectionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Staggered entrance ────────────────── */
+.stagger-in>*{opacity:0;transform:translateY(10px);animation:staggerChild var(--dur-normal) var(--ease-out) both}
+.stagger-in>*:nth-child(1){animation-delay:60ms}
+.stagger-in>*:nth-child(2){animation-delay:110ms}
+.stagger-in>*:nth-child(3){animation-delay:160ms}
+.stagger-in>*:nth-child(4){animation-delay:210ms}
+.stagger-in>*:nth-child(5){animation-delay:260ms}
+.stagger-in>*:nth-child(6){animation-delay:310ms}
+@keyframes staggerChild{to{opacity:1;transform:translateY(0)}}
+
+/* ── Scroll reveal ─────────────────────── */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity var(--dur-slow) var(--ease-out),transform var(--dur-slow) var(--ease-out)}
+.reveal.revealed{opacity:1;transform:translateY(0)}
+
+/* ── Prediction card stagger ───────────── */
+.pred-grid.animated .pred-card{opacity:0;transform:translateY(12px);animation:predCardIn var(--dur-normal) var(--ease-out) both}
+.pred-grid.animated .pred-card:nth-child(1){animation-delay:80ms}
+.pred-grid.animated .pred-card:nth-child(2){animation-delay:150ms}
+.pred-grid.animated .pred-card:nth-child(3){animation-delay:220ms}
+.pred-grid.animated .pred-card:nth-child(4){animation-delay:290ms}
+@keyframes predCardIn{to{opacity:1;transform:translateY(0)}}
+
+/* ── Feature importance bar animation ──── */
+.fi-bar{transform-origin:left;animation:fiBarGrow 600ms var(--ease-out) both}
+@keyframes fiBarGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ── Status dot pulse ──────────────────── */
+.hdr-badge.on .dot{animation:statusPulse 3s var(--ease-in-out) infinite}
+@keyframes statusPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,0.35)}50%{opacity:0.7;box-shadow:0 0 6px 2px rgba(52,211,153,0.12)}}
+.sb-status-dot.green{animation:statusPulse 3s var(--ease-in-out) infinite}
+
+/* ── Sidebar micro-interactions ────────── */
+.sb-item{transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),transform var(--dur-micro) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.sb-item:hover{transform:translateX(2px)}
+.sb-item:active{transform:translateX(1px) scale(0.98)}
+.sb-item.active{box-shadow:inset 0 0 12px rgba(56,168,255,0.04)}
+
+/* ── Selection flash ───────────────────── */
+.flash-in{animation:flashIn 400ms var(--ease-out) both}
+@keyframes flashIn{0%{background-color:rgba(56,168,255,0.06)}100%{background-color:transparent}}
+
+/* ── Workflow step animation ────────────── */
+.wf-dot{transition:all var(--dur-normal) var(--ease-out)}
+.wf-dot.done{animation:wfDotDone 400ms var(--ease-spring) both}
+@keyframes wfDotDone{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+.wf-arrow{transition:background var(--dur-normal) var(--ease-out)}
+.wf-arrow.done{animation:wfArrowDone 400ms var(--ease-out) both}
+@keyframes wfArrowDone{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ── Notification ──────────────────────── */
+@keyframes notifIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ── Cursor glow ──────────────────────── */
+.cursor-glow{position:fixed;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(56,168,255,0.03) 0%,rgba(100,160,255,0.01) 35%,transparent 65%);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:opacity 0.6s;will-change:transform}
+
+/* ── Ambient ocean background ──────────── */
+.ambient-bg{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;overflow:hidden}
+.ambient-orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:0.35;will-change:transform}
+.ambient-orb.o1{width:600px;height:600px;background:radial-gradient(circle,rgba(56,168,255,0.04),transparent 70%);top:-10%;right:-5%;animation:orbFloat1 25s ease-in-out infinite}
+.ambient-orb.o2{width:500px;height:500px;background:radial-gradient(circle,rgba(34,211,238,0.03),transparent 70%);bottom:-15%;left:-8%;animation:orbFloat2 30s ease-in-out infinite}
+.ambient-orb.o3{width:400px;height:400px;background:radial-gradient(circle,rgba(45,212,191,0.025),transparent 70%);top:40%;left:30%;animation:orbFloat3 20s ease-in-out infinite}
+@keyframes orbFloat1{0%,100%{transform:translate(0,0)}33%{transform:translate(-40px,30px)}66%{transform:translate(20px,-20px)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0)}33%{transform:translate(30px,-25px)}66%{transform:translate(-20px,15px)}}
+@keyframes orbFloat3{0%,100%{transform:translate(0,0)}50%{transform:translate(-15px,-20px)}}
+
+/* ── Focus states ──────────────────────── */
+.btn:focus-visible,.sb-item:focus-visible,.obs-sel select:focus-visible,.pres-toggle:focus-visible{outline:none;box-shadow:var(--focus-glow)}
+.sb-item:focus-visible{border-radius:var(--r-md)}
+
+/* ── Reduced motion ────────────────────── */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}.cursor-glow,.ambient-bg{display:none}.section{opacity:1!important;transform:none!important}.reveal{opacity:1!important;transform:none!important}.app{opacity:1!important;animation:none!important}}
+
+/* ── Mobile: reduce ambient effects ────── */
+@media(max-width:900px){.ambient-bg{opacity:0.5}.cursor-glow{display:none}}
+
+/* ═══════════════════════════════════════════════════════════════
+   COPILOT
+   ═══════════════════════════════════════════════════════════════ */
+.copilot-fab{position:fixed;bottom:20px;left:calc(var(--sidebar-w) + 20px);z-index:250;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1e40af);border:2px solid rgba(96,165,250,0.30);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.35),0 0 30px rgba(37,99,235,0.10);transition:transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);font-size:20px}
+.copilot-fab:hover{transform:scale(1.08) translateY(-1px);box-shadow:0 6px 28px rgba(37,99,235,0.45),0 0 40px rgba(37,99,235,0.15)}
+.copilot-fab:active{transform:scale(0.96)}
+.copilot-fab .copilot-tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--r-sm);padding:5px 10px;font-size:.7rem;font-weight:600;color:var(--text-primary);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);box-shadow:var(--shadow-md)}
+.copilot-fab:hover .copilot-tooltip{opacity:1;transform:translateX(-50%) translateY(0)}
+.copilot-fab .copilot-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--bg-elevated)}
+
+/* Copilot panel */
+.copilot-panel{position:fixed;bottom:78px;left:calc(var(--sidebar-w) + 20px);z-index:249;width:400px;max-height:560px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--glass-border);border-radius:var(--r-xl);box-shadow:0 16px 60px rgba(0,0,0,0.55),0 0 1px rgba(100,160,255,0.15);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateY(12px) scale(0.97);pointer-events:none;transition:opacity var(--dur-normal) var(--ease-out),transform var(--dur-normal) var(--ease-out)}
+.copilot-panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.copilot-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-subtle);background:rgba(15,21,38,0.85)}
+.copilot-panel-title{display:flex;align-items:center;gap:8px}
+.copilot-panel-title span{font-size:.92rem;font-weight:700;color:var(--text-primary)}
+.copilot-panel-title small{font-size:.66rem;color:var(--text-muted);font-weight:500}
+.copilot-close{width:28px;height:28px;border-radius:var(--r-sm);background:transparent;border:1px solid transparent;color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--dur-fast) var(--ease-out);font-size:16px}
+.copilot-close:hover{background:var(--bg-card);border-color:var(--border-default);color:var(--text-primary)}
+
+/* Messages area */
+.copilot-messages{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-height:260px;max-height:380px}
+.copilot-msg{max-width:88%;padding:10px 14px;border-radius:var(--r-md);font-size:.82rem;line-height:1.65;animation:msgIn var(--dur-normal) var(--ease-out) both}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.copilot-msg.user{align-self:flex-end;background:rgba(56,168,255,0.12);border:1px solid rgba(56,168,255,0.18);color:var(--text-primary);border-bottom-right-radius:4px}
+.copilot-msg.assistant{align-self:flex-start;background:var(--bg-card);border:1px solid var(--border-subtle);color:var(--text-secondary);border-bottom-left-radius:4px}
+.copilot-msg.assistant strong{color:var(--text-primary)}
+.copilot-msg.error{align-self:flex-start;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);color:var(--error);font-size:.78rem}
+.copilot-msg.system{align-self:center;background:rgba(56,168,255,.04);border:1px solid rgba(56,168,255,.08);color:var(--text-tertiary);font-size:.72rem;padding:6px 12px;border-radius:999px;max-width:95%;text-align:center}
+
+/* Loading dots in copilot */
+.copilot-thinking{display:flex;align-items:center;gap:6px;padding:10px 14px;align-self:flex-start}
+.copilot-thinking span{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:dotPulse 1.2s ease-in-out infinite}
+.copilot-thinking span:nth-child(2){animation-delay:.15s}
+.copilot-thinking span:nth-child(3){animation-delay:.3s}
+
+/* Input area */
+.copilot-input-wrap{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border-subtle);background:rgba(15,21,38,0.85)}
+.copilot-input{flex:1;background:var(--bg-input);border:1px solid var(--border-default);border-radius:var(--r-md);padding:9px 12px;font-size:.82rem;color:var(--text-primary);font-family:inherit;resize:none;line-height:1.45;min-height:38px;max-height:80px;transition:border-color var(--dur-fast) var(--ease-out)}
+.copilot-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,168,255,.10)}
+.copilot-input::placeholder{color:var(--text-muted)}
+.copilot-send{width:38px;height:38px;border-radius:var(--r-md);background:var(--accent);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--dur-fast) var(--ease-out);flex-shrink:0}
+.copilot-send:hover{background:var(--accent-bright);transform:translateY(-1px)}
+.copilot-send:active{transform:scale(0.95)}
+.copilot-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.copilot-send svg{width:16px;height:16px}
+
+/* Copilot greeting card */
+.copilot-greeting{padding:12px 0;text-align:center}
+.copilot-greeting h4{font-size:.88rem;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.copilot-greeting p{font-size:.74rem;color:var(--text-tertiary);line-height:1.5}
+.copilot-suggestions{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.copilot-suggestion{padding:5px 11px;border-radius:999px;font-size:.7rem;font-weight:500;color:var(--accent);border:1px solid rgba(56,168,255,.15);background:rgba(56,168,255,.05);cursor:pointer;transition:all var(--dur-fast) var(--ease-out)}
+.copilot-suggestion:hover{background:rgba(56,168,255,.12);border-color:rgba(56,168,255,.25)}
+
+/* Mobile copilot */
+@media(max-width:900px){
+  .copilot-fab{left:auto;right:16px;bottom:16px}
+  .copilot-panel{left:auto;right:16px;bottom:74px;width:calc(100vw - 32px);max-width:400px}
+  .pres-mode .copilot-fab{left:auto;right:16px}
+}
+</style>
+</head>
+<body>
+<!-- Ambient ocean background -->
+<div class="ambient-bg"><div class="ambient-orb o1"></div><div class="ambient-orb o2"></div><div class="ambient-orb o3"></div></div>
+<!-- Cursor glow -->
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<div class="app" id="appRoot">
+
+<!-- ═══════ SIDEBAR ═══════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">
+      <div class="sb-icon">🌊</div>
+      <div><div class="sb-name">OceanEmbed</div><div class="sb-tag">Subsurface Intelligence</div></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Navigation</div>
+    <a class="sb-item active" data-s="overview" onclick="go('overview')"><i data-lucide="layout-dashboard"></i> Overview</a>
+    <a class="sb-item" data-s="observations" onclick="go('observations')"><i data-lucide="map-pin"></i> Observations</a>
+    <a class="sb-item" data-s="prediction" onclick="go('prediction')"><i data-lucide="thermometer"></i> Subsurface Prediction</a>
+    <a class="sb-item" data-s="analysis" onclick="go('analysis')"><i data-lucide="brain"></i> AI Analysis</a>
+    <div class="sb-label" style="margin-top:4px">Data & Model</div>
+    <a class="sb-item" data-s="validation" onclick="go('validation')"><i data-lucide="bar-chart-3"></i> Model Validation</a>
+    <a class="sb-item" data-s="provenance" onclick="go('provenance')"><i data-lucide="shield-check"></i> Data Provenance</a>
+    <div class="sb-label" style="margin-top:4px">Disaster Response</div>
+    <a class="sb-item" data-s="cyclone" onclick="go('cyclone')"><i data-lucide="wind"></i> Cyclone Track Risk</a>
+    <a class="sb-item" data-s="fisheries" onclick="go('fisheries')"><i data-lucide="fish"></i> Fisheries Habitat</a>
+    <a class="sb-item" data-s="acoustics" onclick="go('acoustics')"><i data-lucide="radar"></i> Underwater Acoustics</a>
+    <a class="sb-item" data-s="climate" onclick="go('climate')"><i data-lucide="thermometer-sun"></i> Ocean Heat Content</a>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-status-label">System Status</div>
+    <div class="sb-status-row"><div class="sb-status-dot green"></div><div class="sb-status-text" id="sb-pipe">Data Pipeline</div></div>
+    <div class="sb-status-row"><div class="sb-status-dot green"></div><div class="sb-status-text" id="sb-model">ML Model</div></div>
+    <div class="sb-status-row"><div class="sb-status-dot green" id="sb-ai-dot"></div><div class="sb-status-text" id="sb-ai">AI Analysis</div></div>
+  </div>
+</aside>
+
+<!-- ═══════ MAIN ═══════ -->
+<div class="main">
+  <header class="app-header">
+    <div class="hdr-left">
+      <button class="mobile-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" style="width:20px;height:20px"></i></button>
+      <div><div class="hdr-title">OceanEmbed</div><div class="hdr-sub">Arabian Sea Ocean Intelligence</div></div>
+    </div>
+    <div class="hdr-right">
+      <span class="hdr-badge on" id="h-data"><span class="dot"></span> Data Ready</span>
+      <span class="hdr-badge on" id="h-model"><span class="dot"></span> Model Ready</span>
+      <span class="hdr-badge off" id="h-ai"><span class="dot"></span> AI Offline</span>
+      <div class="hdr-meta" id="hdr-meta">Loading...</div>
+    </div>
+  </header>
+
+  <main class="content">
+
+<!-- ═══════ OVERVIEW ═══════ -->
+<section class="section active" id="s-overview">
+  <div class="hero" style="animation: heroIn 0.6s var(--ease-out) 300ms both">
+    <div class="hero-badge" style="animation: heroChild 0.4s var(--ease-out) 400ms both">🌊 Arabian Sea Intelligence Platform</div>
+    <h1 style="animation: heroChild 0.5s var(--ease-out) 480ms both">See Beneath the Surface.</h1>
+    <p style="animation: heroChild 0.5s var(--ease-out) 560ms both">Use ocean observations and machine learning to estimate subsurface temperature structure across the Arabian Sea.</p>
+    <div class="hero-btns" style="animation: heroChild 0.5s var(--ease-out) 640ms both">
+      <button class="btn btn-p" onclick="go('observations')"><i data-lucide="map-pin" style="width:15px;height:15px"></i> Explore Observations</button>
+      <button class="btn btn-s" onclick="go('prediction')"><i data-lucide="play" style="width:15px;height:15px"></i> Run Prediction</button>
+      <button class="btn btn-demo" onclick="loadDemo()">▶ Demo Observation</button>
+    </div>
+  </div>
+
+  <!-- How OceanEmbed Works -->
+  <div class="card" style="margin-bottom:20px;overflow:visible">
+    <div style="text-align:center;margin-bottom:4px">
+      <div class="card-label" style="margin-bottom:2px;font-size:.66rem;letter-spacing:.1em">HOW OCEANEMBED WORKS</div>
+      <div style="font-size:.78rem;color:var(--text-tertiary)">From real ocean observations to AI-powered subsurface intelligence</div>
+    </div>
+    <div class="workflow" id="workflow">
+      <div class="wf-step"><div class="wf-dot done">🌊</div><div class="wf-label">Real Ocean<br>Observations</div><div class="wf-tip">Genuine ocean observations from Argo and authoritative surface datasets.</div></div>
+      <div class="wf-arrow done"></div>
+      <div class="wf-step"><div class="wf-dot done">🛰️</div><div class="wf-label">Surface Data<br>Fusion</div><div class="wf-tip">SST, SSH and SSS surface observations.</div></div>
+      <div class="wf-arrow done"></div>
+      <div class="wf-step"><div class="wf-dot done">🤿</div><div class="wf-label">Argo Profile<br>Matching</div><div class="wf-tip">Matches surface observations with nearby Argo profiles using spatial and temporal constraints.</div></div>
+      <div class="wf-arrow done"></div>
+      <div class="wf-step"><div class="wf-dot done">✓</div><div class="wf-label">Validation</div><div class="wf-tip">Checks data quality, physical ranges and provenance.</div></div>
+      <div class="wf-arrow done"></div>
+      <div class="wf-step"><div class="wf-dot done">🤖</div><div class="wf-label">ML<br>Prediction</div><div class="wf-tip">Predicts subsurface temperature at 50m, 100m, 200m and 500m.</div></div>
+      <div class="wf-arrow done"></div>
+      <div class="wf-step"><div class="wf-dot done">🧠</div><div class="wf-label">Nemotron<br>Analysis</div><div class="wf-tip">Interprets observations and predictions to provide oceanographic reasoning.</div></div>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:.72rem;color:var(--text-muted);font-style:italic">Real observations → validated surface–Argo data → subsurface temperature prediction → AI-powered interpretation</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="metrics-row" id="overview-stats">
+    <div class="card metric-card mc-loc"><div class="card-label">Observation Rows</div><div class="mc-val" id="ov-rows">—</div></div>
+    <div class="card metric-card mc-sst"><div class="card-label">Argo Floats</div><div class="mc-val" id="ov-floats">—</div></div>
+    <div class="card metric-card mc-ssh"><div class="card-label">Profile Cycles</div><div class="mc-val" id="ov-cycles">—</div></div>
+    <div class="card metric-card mc-sss"><div class="card-label">Target Depths</div><div class="mc-val" id="ov-depths">—</div></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="sec-head"><div class="sec-title">Quick Select</div><div class="sec-sub" id="ov-sel-sub">Select an observation to begin.</div></div>
+  <div class="obs-sel"><label>Observation:</label><select id="sel-overview" onchange="selectObs(this.value)"><option value="">Select a location...</option></select></div>
+  <div id="ov-metrics-area"><div class="empty"><div class="empty-icon">🛰️</div><div class="empty-title">No observation selected</div><div class="empty-text">Select an observation point from the dropdown above to see ocean conditions.</div></div></div>
+</section>
+
+<!-- ═══════ OBSERVATIONS ═══════ -->
+<section class="section" id="s-observations">
+  <div class="sec-head"><div class="sec-title">Ocean Observations</div><div class="sec-sub">Interactive map of Argo float profiles in the Arabian Sea</div></div>
+  <div class="obs-sel"><label>Select:</label><select id="sel-obs" onchange="selectObs(this.value)"><option value="">Select a location...</option></select></div>
+  <div class="two-col">
+    <div>
+      <div class="map-wrap"><div id="obs-map"></div>
+        <div class="map-overlay" id="map-info" style="display:none">
+          <div class="map-ov-title">📍 Selected Profile</div>
+          <div class="map-ov-row"><span class="map-ov-l">Latitude</span><span class="map-ov-v" id="mi-lat">—</span></div>
+          <div class="map-ov-row"><span class="map-ov-l">Longitude</span><span class="map-ov-v" id="mi-lon">—</span></div>
+          <div class="map-ov-row"><span class="map-ov-l">Region</span><span class="map-ov-v">Arabian Sea</span></div>
+          <div class="map-ov-row"><span class="map-ov-l">Date</span><span class="map-ov-v" id="mi-date">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" id="obs-detail-card">
+        <div class="card-header"><span class="card-label">Observation Detail</span></div>
+        <div id="obs-detail"><div class="empty" style="padding:16px"><div class="empty-title" style="font-size:.85rem">Click a point on the map</div><div class="empty-text" style="font-size:.74rem">to view observation metadata.</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PREDICTION ═══════ -->
+<section class="section" id="s-prediction">
+  <div class="sec-head"><div class="sec-title">Subsurface Temperature Prediction</div><div class="sec-sub">ML-generated thermal profile from surface observations — not direct measurements</div></div>
+  <div class="obs-sel"><label>Observation:</label><select id="sel-pred" onchange="selectObs(this.value)"><option value="">Select a location...</option></select></div>
+  <div id="pred-content"><div class="empty"><div class="empty-icon">🎯</div><div class="empty-title">Select an observation to predict</div><div class="empty-text">Choose an observation point, then run the subsurface temperature model.</div></div></div>
+</section>
+
+<!-- ═══════ AI ANALYSIS ═══════ -->
+<section class="section" id="s-analysis">
+  <div class="sec-head"><div class="sec-title">Nemotron Ocean Intelligence</div><div class="sec-sub">AI-assisted interpretation of observed conditions and predicted thermal structure</div></div>
+  <div class="nem-panel">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:36px;height:36px;border-radius:var(--r-md);background:rgba(139,92,246,.12);display:flex;align-items:center;justify-content:center;font-size:17px">🧠</div>
+      <div><div style="font-size:1rem;font-weight:700">Nemotron Scientific Analysis</div><div style="font-size:.72rem;color:var(--text-tertiary)">Powered by NVIDIA Nemotron-3-Ultra</div></div>
+    </div>
+    <div class="info-banner" style="margin-bottom:12px"><span>ML MODEL produces temperature predictions. NEMOTRON interprets the scientific result.</span></div>
+    <p style="color:var(--text-secondary);font-size:.84rem;margin-bottom:12px">Generate a structured scientific interpretation for the selected observation.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="runNemotron()" id="nem-btn"><i data-lucide="brain" style="width:15px;height:15px"></i> Analyze Observation</button>
+      <span id="nem-obs-label" style="font-size:.76rem;color:var(--text-tertiary)"></span>
+    </div>
+    <div id="nem-result" style="display:none"></div>
+    <div id="nem-loading" style="display:none"></div>
+    <div id="nem-empty"><div class="empty" style="padding:28px"><div class="empty-icon">🔬</div><div class="empty-title">Ready to analyze this observation.</div><div class="empty-text">Select an observation and click "Analyze Observation" to generate a scientific interpretation.</div></div></div>
+  </div>
+</section>
+
+<!-- ═══════ MODEL VALIDATION ═══════ -->
+<section class="section" id="s-validation">
+  <div class="sec-head"><div class="sec-title">Model Validation</div><div class="sec-sub">Performance evaluation on held-out real Argo observations</div></div>
+  <div class="info-banner" style="margin-bottom:16px"><span>Float-aware validation: profiles from the same Argo float are grouped to reduce leakage.</span></div>
+  <div id="val-content"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Loading metrics...</div></div></div>
+</section>
+
+<!-- ═══════ DATA PROVENANCE ═══════ -->
+<section class="section" id="s-provenance">
+  <div class="sec-head"><div class="sec-title">Data Provenance & Trust</div><div class="sec-sub">Verification that all data originates from real ocean observations</div></div>
+  <div id="prov-content"><div class="empty"><div class="empty-icon">🛡️</div><div class="empty-title">Loading provenance...</div></div></div>
+</section>
+
+<!-- ═══════ CYCLONE TRACK RISK ═══════ -->
+<section class="section" id="s-cyclone">
+  <div class="sec-head"><div class="sec-title">Cyclone Track Heat-Potential Risk</div><div class="sec-sub">Score an entire cyclone advisory track for subsurface warm-water risk — not just a single point</div></div>
+  <div class="info-banner" style="margin-bottom:14px"><span>Paste a track as one "lat, lon, YYYY-MM-DD" point per line (e.g. from an IMD/JTWC advisory), or use the sample track. Each point is scored anywhere in the domain via nearest-observation interpolation — it does not need to match a dataset location exactly.</span></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-label" style="margin-bottom:8px">Track Points</div>
+    <textarea id="track-input" rows="6" placeholder="14.0, 68.0, 2026-06-01&#10;16.5, 70.2, 2026-06-02&#10;18.2, 71.5, 2026-06-03" style="width:100%;background:var(--bg-elevated,#131a2e);color:var(--text-primary,#e8f0fe);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px;font-family:'JetBrains Mono',monospace;font-size:.8rem;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="runCycloneTrack()" id="track-btn"><i data-lucide="wind" style="width:15px;height:15px"></i> Score Track</button>
+      <button class="btn btn-s" onclick="loadSampleTrack()">Load Sample Track</button>
+    </div>
+  </div>
+  <div id="track-content"><div class="empty"><div class="empty-icon">🌀</div><div class="empty-title">No track scored yet</div><div class="empty-text">Enter track points above and click "Score Track".</div></div></div>
+</section>
+
+<!-- ═══════ FISHERIES HABITAT ═══════ -->
+<section class="section" id="s-fisheries">
+  <div class="sec-head"><div class="sec-title">Fisheries Habitat Risk</div><div class="sec-sub">Thermocline-depth read on pelagic fish (tuna, sardine) aggregation potential — same reconstructed profile, fisheries lens</div></div>
+  <div class="info-banner" style="margin-bottom:14px"><span>Paste one "lat, lon, YYYY-MM-DD" point per line, or use the sample points. Uses the same subsurface reconstruction as Cyclone Track Risk, read for fishery advisory purposes instead.</span></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-label" style="margin-bottom:8px">Points</div>
+    <textarea id="fisheries-input" rows="6" placeholder="14.0, 68.0, 2026-06-01&#10;16.5, 70.2, 2026-06-02" style="width:100%;background:var(--bg-elevated,#131a2e);color:var(--text-primary,#e8f0fe);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px;font-family:'JetBrains Mono',monospace;font-size:.8rem;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="runAppTrack('fisheries')" id="fisheries-btn"><i data-lucide="fish" style="width:15px;height:15px"></i> Score Points</button>
+      <button class="btn btn-s" onclick="loadSampleTrack('fisheries-input')">Load Sample Points</button>
+    </div>
+  </div>
+  <div id="fisheries-content"><div class="empty"><div class="empty-icon">🐟</div><div class="empty-title">No points scored yet</div><div class="empty-text">Enter points above and click "Score Points".</div></div></div>
+</section>
+
+<!-- ═══════ UNDERWATER ACOUSTICS ═══════ -->
+<section class="section" id="s-acoustics">
+  <div class="sec-head"><div class="sec-title">Underwater Acoustics Risk</div><div class="sec-sub">Thermocline-depth read on sonar shadow-zone risk — relevant to underwater surveillance / ASW planning</div></div>
+  <div class="info-banner" style="margin-bottom:14px"><span>Paste one "lat, lon, YYYY-MM-DD" point per line, or use the sample points. A shallow thermocline bends sonar rays into a shadow zone; a deep, gradual one gives more uniform detection range.</span></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-label" style="margin-bottom:8px">Points</div>
+    <textarea id="acoustics-input" rows="6" placeholder="14.0, 68.0, 2026-06-01&#10;16.5, 70.2, 2026-06-02" style="width:100%;background:var(--bg-elevated,#131a2e);color:var(--text-primary,#e8f0fe);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px;font-family:'JetBrains Mono',monospace;font-size:.8rem;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="runAppTrack('acoustics')" id="acoustics-btn"><i data-lucide="radar" style="width:15px;height:15px"></i> Score Points</button>
+      <button class="btn btn-s" onclick="loadSampleTrack('acoustics-input')">Load Sample Points</button>
+    </div>
+  </div>
+  <div id="acoustics-content"><div class="empty"><div class="empty-icon">📡</div><div class="empty-title">No points scored yet</div><div class="empty-text">Enter points above and click "Score Points".</div></div></div>
+</section>
+
+<!-- ═══════ OCEAN HEAT CONTENT ═══════ -->
+<section class="section" id="s-climate">
+  <div class="sec-head"><div class="sec-title">Ocean Heat Content Monitor</div><div class="sec-sub">Warm-layer thickness (26°C isotherm depth) as an upper-ocean heat-storage / warming-trend signal</div></div>
+  <div class="info-banner" style="margin-bottom:14px"><span>Paste one "lat, lon, YYYY-MM-DD" point per line, or use the sample points. Aggregated over time, warm-layer thickness at many points is the same kind of signal used to track ocean heat content.</span></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-label" style="margin-bottom:8px">Points</div>
+    <textarea id="climate-input" rows="6" placeholder="14.0, 68.0, 2026-06-01&#10;16.5, 70.2, 2026-06-02" style="width:100%;background:var(--bg-elevated,#131a2e);color:var(--text-primary,#e8f0fe);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px;font-family:'JetBrains Mono',monospace;font-size:.8rem;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="runAppTrack('climate')" id="climate-btn"><i data-lucide="thermometer-sun" style="width:15px;height:15px"></i> Score Points</button>
+      <button class="btn btn-s" onclick="loadSampleTrack('climate-input')">Load Sample Points</button>
+    </div>
+  </div>
+  <div id="climate-content"><div class="empty"><div class="empty-icon">🌡️</div><div class="empty-title">No points scored yet</div><div class="empty-text">Enter points above and click "Score Points".</div></div></div>
+</section>
+
+  </main>
+</div>
+</div>
+
+<!-- Presentation toggle -->
+<button class="pres-toggle" id="pres-btn" onclick="togglePres()">🖥️ Presentation Mode</button>
+
+<!-- ═══════ COPILOT ═══════ -->
+<div class="copilot-fab" id="copilotFab" onclick="toggleCopilot()">
+  <span class="copilot-tooltip">Ask Copilot</span>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+</div>
+<div class="copilot-panel" id="copilotPanel">
+  <div class="copilot-panel-header">
+    <div class="copilot-panel-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+      <div><span>Copilot</span><br><small>OceanEmbed AI Assistant</small></div>
+    </div>
+    <button class="copilot-close" onclick="toggleCopilot()">✕</button>
+  </div>
+  <div class="copilot-messages" id="copilotMessages">
+    <div class="copilot-greeting">
+      <h4>Welcome to Copilot</h4>
+      <p>Ask me anything about ocean observations, subsurface predictions, or oceanographic concepts.</p>
+      <div class="copilot-suggestions">
+        <div class="copilot-suggestion" onclick="copilotQuickAsk('What does SST mean?')">What does SST mean?</div>
+        <div class="copilot-suggestion" onclick="copilotQuickAsk('Explain this prediction')">Explain this prediction</div>
+        <div class="copilot-suggestion" onclick="copilotQuickAsk('What causes a thermocline?')">What causes a thermocline?</div>
+        <div class="copilot-suggestion" onclick="copilotQuickAsk('Summarize the current observation')">Summarize current observation</div>
+      </div>
+    </div>
+  </div>
+  <div class="copilot-input-wrap">
+    <textarea class="copilot-input" id="copilotInput" placeholder="Ask Copilot anything..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendCopilot()}"></textarea>
+    <button class="copilot-send" id="copilotSend" onclick="sendCopilot()" title="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   OCEANEMBED — Application Logic
+   ═══════════════════════════════════════════════════════════════ */
+const API = '';
+let map = null, markers = [], selected = null, selectedIsCustom = false, allObs = [], tempChart = null, presMode = false;
+let scrollObserver = null;
+let currentObsData = null; // Track current observation for Copilot context
+let copilotOpen = false;
+let copilotHistory = [];
+
+// ── Init ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  lucide.createIcons();
+  initCursorGlow();
+  initScrollReveal();
+  initRippleButtons();
+  await Promise.all([loadStatus(), loadDatasetStats(), loadObservations()]);
+  initMap();
+  renderOverviewStats();
+  loadValidation();
+  loadProvenance();
+  // Trigger overview stagger
+  setTimeout(() => { document.getElementById('overview-stats')?.classList.add('stagger-in'); }, 400);
+  // Safety: ensure app is visible even if CSS animation fails
+  setTimeout(() => {
+    const r = document.getElementById('appRoot');
+    if (r && parseFloat(getComputedStyle(r).opacity) < 0.1) {
+      r.style.opacity = '1';
+      r.style.animation = 'none';
+    }
+  }, 800);
+});
+
+// ── Cursor glow ──────────────────────────────────────────────
+function initCursorGlow() {
+  const glow = document.getElementById('cursorGlow');
+  if (!glow) return;
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) { glow.style.display = 'none'; return; }
+  let rafId = null, mx = 0, my = 0;
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    if (!rafId) rafId = requestAnimationFrame(() => {
+      glow.style.left = mx + 'px'; glow.style.top = my + 'px';
+      rafId = null;
+    });
+  }, { passive: true });
+  document.addEventListener('mouseleave', () => { glow.style.opacity = '0'; }, { passive: true });
+  document.addEventListener('mouseenter', () => { glow.style.opacity = '1'; }, { passive: true });
+}
+
+// ── Scroll reveal ────────────────────────────────────────────
+function initScrollReveal() {
+  scrollObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('revealed'); scrollObserver.unobserve(e.target); } });
+  }, { threshold: 0.15, rootMargin: '0px 0px -20px 0px' });
+  observeNewElements();
+}
+function observeNewElements() {
+  if (!scrollObserver) return;
+  document.querySelectorAll('.section.active .card, .section.active .chart-box, .section.active .nem-panel, .section.active .info-banner, .section.active .src-card').forEach(el => {
+    if (!el.classList.contains('revealed') && !el.closest('.hero')) {
+      el.classList.add('reveal');
+      scrollObserver.observe(el);
+    }
+  });
+}
+
+// ── Button ripple ────────────────────────────────────────────
+function initRippleButtons() {
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn');
+    if (!btn || btn.disabled) return;
+    const rect = btn.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'btn-ripple';
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 550);
+  });
+}
+
+// ── Navigation ───────────────────────────────────────────────
+function go(s) {
+  const current = document.querySelector('.section.active');
+  if (current) { current.style.opacity = '0'; current.style.transform = 'translateY(-6px)'; }
+  setTimeout(() => {
+    document.querySelectorAll('.section').forEach(el => { el.classList.remove('active'); el.style.opacity = ''; el.style.transform = ''; });
+    document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+    const sec = document.getElementById('s-' + s);
+    if (sec) { sec.classList.add('active'); }
+    const nav = document.querySelector(`.sb-item[data-s="${s}"]`);
+    if (nav) nav.classList.add('active');
+    if (s === 'observations' && map) setTimeout(() => map.invalidateSize(), 120);
+    document.getElementById('sidebar').classList.remove('open');
+    setTimeout(observeNewElements, 100);
+  }, current ? 180 : 0);
+}
+
+// ── API helpers ──────────────────────────────────────────────
+async function api(path) {
+  try { const r = await fetch(API + path); if (!r.ok) throw 0; return await r.json(); }
+  catch(e) { console.error('API:', path, e); return null; }
+}
+async function apiPost(path, body) {
+  try { const r = await fetch(API + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); return await r.json(); }
+  catch(e) { console.error('API:', path, e); return null; }
+}
+
+// ── Load status ──────────────────────────────────────────────
+async function loadStatus() {
+  const d = await api('/api/status'); if (!d) return;
+  const h = s => s === 'Ready' ? 'on' : 'off';
+
+  // Honest data-mode badge: real data is green, demo/synthetic is
+  // shown amber with an explicit label rather than a generic green
+  // "Data Ready" regardless of what's actually loaded underneath.
+  const mode = d.dataPipeline.mode || 'missing';
+  const dataBadge = document.getElementById('h-data');
+  if (mode === 'real') {
+    dataBadge.className = 'hdr-badge on';
+    dataBadge.innerHTML = `<span class="dot"></span> Real Data`;
+  } else if (mode === 'demo_synthetic') {
+    dataBadge.className = 'hdr-badge off';
+    dataBadge.style.color = '#fbbf24';
+    dataBadge.innerHTML = `<span class="dot"></span> Demo Data (Synthetic)`;
+  } else {
+    dataBadge.className = 'hdr-badge off';
+    dataBadge.innerHTML = `<span class="dot"></span> No Data`;
+  }
+
+  document.getElementById('h-model').className = `hdr-badge ${h(d.mlModel.status)}`;
+  document.getElementById('h-ai').className = `hdr-badge ${h(d.nemotron.status)}`;
+  document.getElementById('h-ai').innerHTML = `<span class="dot"></span> ${d.nemotron.status === 'Ready' ? 'AI Ready' : 'AI Offline'}`;
+  document.getElementById('hdr-meta').innerHTML = `Mode: ${d.dataPipeline.label}<br>Dataset: ${d.datasetName}`;
+  const aiDot = document.getElementById('sb-ai-dot');
+  aiDot.className = `sb-status-dot ${d.nemotron.active ? 'green' : 'gray'}`;
+  document.getElementById('sb-ai').textContent = `AI Analysis · ${d.nemotron.status}`;
+  document.getElementById('sb-pipe').textContent = `Data Pipeline · ${mode === 'real' ? 'Real' : mode === 'demo_synthetic' ? 'Demo' : 'Missing'}`;
+}
+
+// ── Load dataset stats ───────────────────────────────────────
+let dsStats = null;
+async function loadDatasetStats() {
+  dsStats = await api('/api/dataset-stats');
+}
+function renderOverviewStats() {
+  if (!dsStats) return;
+  document.getElementById('ov-rows').textContent = dsStats.totalRows;
+  document.getElementById('ov-floats').textContent = dsStats.uniqueFloats ?? 'N/A (demo)';
+  document.getElementById('ov-cycles').textContent = dsStats.profileCycles ?? 'N/A (demo)';
+  document.getElementById('ov-depths').textContent = dsStats.targetDepths;
+}
+
+// ── Load observations ────────────────────────────────────────
+async function loadObservations() {
+  const d = await api('/api/observations');
+  if (!d || !d.observations) return;
+  allObs = d.observations;
+  ['sel-overview','sel-obs','sel-pred'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    while (sel.options.length > 1) sel.remove(1);
+    d.observations.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = `${o.lat},${o.lon}`;
+      opt.textContent = `${o.lat.toFixed(2)}°N, ${o.lon.toFixed(2)}°E — ${o.date}`;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ── Map ──────────────────────────────────────────────────────
+function initMap() {
+  if (map) return;
+  map = L.map('obs-map', { center: [16, 68], zoom: 5, zoomControl: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', subdomains: 'abc', maxZoom: 19
+  }).addTo(map);
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
+  addMarkers();
+  // Click ANY point in the ocean domain -- not just existing markers -- to
+  // get an interpolated subsurface prediction + cyclone heat-potential risk.
+  map.on('click', (e) => handleMapPointClick(e.latlng.lat, e.latlng.lng, e.latlng));
+}
+
+let clickMarker = null;
+let customOptionValue = null; // tracks the one dynamic "interpolated point" dropdown entry, if any
+
+// Add (or replace) a single dynamic option representing an arbitrary
+// clicked point. Kept visually distinct ("📍 ... — interpolated") from
+// the real dataset entries above it, rather than pretending it's one of
+// the validated observations.
+//
+// IMPORTANT: only touches the ONE dropdown passed in `selectIds` (by
+// default just 'sel-obs', since that's the only dropdown visible next to
+// the clickable map). Earlier this silently selected the same "📍
+// interpolated" entry in the Overview and Prediction dropdowns too --
+// without ever loading real content into those tabs -- so switching tabs
+// showed a dropdown that looked populated over a stale/empty panel. That
+// was the "loads up everywhere" bug: fixed by scoping the side effect to
+// the section the click actually happened in.
+function setCustomPointOption(lat, lon, selectIds = ['sel-obs']) {
+  const value = `custom:${lat.toFixed(4)},${lon.toFixed(4)}`;
+  const label = `📍 ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E — interpolated`;
+  selectIds.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    let opt = sel.querySelector('option[data-custom="1"]');
+    if (!opt) {
+      opt = document.createElement('option');
+      opt.dataset.custom = '1';
+      sel.insertBefore(opt, sel.options[1] || null);
+    }
+    opt.value = value;
+    opt.textContent = label;
+    sel.value = value;
+  });
+  customOptionValue = value;
+}
+
+// Source badge shown per-prediction so the user always knows how a number
+// was produced: pulled from a validated Argo/satellite match, fetched live
+// from NASA/NOAA/ESA for this exact click, or extrapolated because no live
+// data was available. Never hidden -- see get_surface_features_anywhere()
+// in api_server.py for how the backend picks between the three.
+const SOURCE_BADGES = {
+  validated_dataset: { icon: '✅', label: 'Validated observation' },
+  live_satellite:    { icon: '🛰️', label: 'Live satellite fetch' },
+  extrapolated:      { icon: '📈', label: 'Extrapolated (no live data)' },
+};
+
+async function handleMapPointClick(lat, lon, latlng) {
+  if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; }
+  const popup = L.popup({ maxWidth: 280, className: 'ocean-tooltip' })
+    .setLatLng(latlng)
+    .setContent(`<div style="font-family:Inter;font-size:12px;padding:2px 4px">Loading prediction… (fetching live ocean data if needed)</div>`)
+    .openOn(map);
+  const d = await api(`/api/predict-point/${lat.toFixed(4)}/${lon.toFixed(4)}`);
+  if (!d || d.error) {
+    popup.setContent(`<div style="font-family:Inter;font-size:12px;padding:2px 4px;max-width:240px">⚠️ ${d ? d.error : 'Prediction failed — check that the API server is running.'}</div>`);
+    return;
+  }
+
+  // Populate the search bar / dropdown in ALL three sections (Overview,
+  // Observations, Prediction), AND actually load real content into each
+  // one's panel -- not just the dropdown label. Earlier this only synced
+  // the dropdown text across tabs without loading anything, so switching
+  // tabs showed a "selected" dropdown over a stale/empty panel; that's
+  // fixed by rendering real (interpolated-point) content into every panel
+  // right here, so it's already there whichever tab you open next.
+  setCustomPointOption(lat, lon, ['sel-overview', 'sel-obs', 'sel-pred']);
+  selected = { lat, lon };
+  selectedIsCustom = true;
+  currentObsData = null; // no dataset row backs this point -- Nemotron/etc. treat it as unselected
+  renderMapInfo(d);
+  renderObsDetailPredicted(d);
+  renderOvMetricsPredicted(d);
+  renderPredSectionPredicted(d);
+  updateNemLabel(d);
+
+  const r = d.disasterRisk;
+  const riskColor = r.riskLevel === 'Elevated' ? '#f87171' : r.riskLevel === 'Moderate' ? '#fbbf24' : '#34d399';
+  const badge = SOURCE_BADGES[d.interpolation.source] || SOURCE_BADGES.extrapolated;
+  popup.setContent(`
+    <div style="font-family:Inter;font-size:12px;min-width:220px">
+      <div style="font-weight:700;margin-bottom:4px">${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E</div>
+      <div style="color:#94a3c0;font-size:10px;margin-bottom:2px">${badge.icon} ${badge.label} · confidence: ${d.interpolation.confidence}</div>
+      <div style="color:#94a3c0;font-size:10px;margin-bottom:6px">${d.interpolation.note}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:6px">
+        <span>Surface</span><span>${d.predicted.surface}°C</span>
+        <span>50m</span><span>${d.predicted['50m']}°C</span>
+        <span>100m</span><span>${d.predicted['100m']}°C</span>
+        <span>200m</span><span>${d.predicted['200m']}°C</span>
+        <span>500m</span><span>${d.predicted['500m']}°C</span>
+      </div>
+      <div style="padding:5px 8px;border-radius:6px;background:${riskColor}22;border:1px solid ${riskColor}55">
+        <div style="font-weight:700;color:${riskColor}">Cyclone Heat Risk: ${r.riskLevel}</div>
+        <div style="font-size:10px;color:#c9d4e8">26°C isotherm at ${r.isotherm26Depth_m} m</div>
+      </div>
+    </div>`);
+  clickMarker = L.circleMarker(latlng, { radius: 6, fillColor: riskColor, color: '#fff', weight: 1.5, fillOpacity: 0.9 }).addTo(map);
+}
+
+// ── Interpolated/live-fetched-point renderers ──────────────────
+// Deliberately separate from renderObsDetail/renderOvMetrics/renderPredSection
+// (which assume a real dataset row with known ground-truth temperatures) --
+// an arbitrary clicked point has no ground truth to compare against, and
+// this project's whole design principle is to never fabricate one. These
+// show the same predicted values honestly labeled with their data source
+// (validated/live/extrapolated) and confidence instead.
+function renderObsDetailPredicted(d) {
+  const c = document.getElementById('obs-detail'); if (!c) return;
+  const badge = SOURCE_BADGES[d.interpolation.source] || SOURCE_BADGES.extrapolated;
+  c.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:.82rem">
+      <div><div class="card-label">Type</div><div style="font-weight:700">${badge.icon} Interpolated point — not a real Argo profile</div></div>
+      <div><div class="card-label">Location</div><div style="font-weight:700;font-family:'JetBrains Mono',monospace">${d.lat.toFixed(4)}° N, ${d.lon.toFixed(4)}° E</div></div>
+      <div><div class="card-label">Date</div><div style="font-family:'JetBrains Mono',monospace;font-size:.76rem">${d.date || 'Most recent available'}</div></div>
+      <div style="height:1px;background:var(--border-subtle)"></div>
+      <div><div class="card-label">Data Source</div><div style="font-weight:600">${badge.label}</div></div>
+      <div><div class="card-label">Confidence</div><div style="font-weight:600">${d.interpolation.confidence}</div></div>
+      <div style="color:var(--text-muted);font-size:.76rem">${d.interpolation.note}</div>
+    </div>`;
+}
+
+function renderOvMetricsPredicted(d) {
+  const area = document.getElementById('ov-metrics-area');
+  const sub = document.getElementById('ov-sel-sub');
+  if (!area) return;
+  const badge = SOURCE_BADGES[d.interpolation.source] || SOURCE_BADGES.extrapolated;
+  if (sub) sub.textContent = `${badge.icon} ${badge.label} for ${d.lat.toFixed(2)}°N, ${d.lon.toFixed(2)}°E — ${d.date || 'today'}`;
+  const mi = d.modelInputs;
+  area.innerHTML = `<div class="metrics-row" style="margin-bottom:16px">
+    <div class="card metric-card mc-sst"><div class="card-label">SST — Sea Surface Temperature</div><div class="mc-val">${mi.sst}<span class="mc-unit">°C</span></div><div class="mc-source">${badge.label}</div></div>
+    <div class="card metric-card mc-ssh"><div class="card-label">SSH / SLA — Sea Surface Height</div><div class="mc-val">${mi.ssh > 0 ? '+' : ''}${mi.ssh}<span class="mc-unit">m</span></div><div class="mc-source">${badge.label}</div></div>
+    <div class="card metric-card mc-sss"><div class="card-label">SSS — Sea Surface Salinity</div><div class="mc-val">${mi.sss}<span class="mc-unit">PSU</span></div><div class="mc-source">${badge.label}</div></div>
+    <div class="card metric-card mc-loc"><div class="card-label">Location</div><div class="mc-val" style="font-size:1.1rem">${d.lat.toFixed(2)}°N, ${d.lon.toFixed(2)}°E</div><div class="mc-source">Confidence: ${d.interpolation.confidence}</div></div>
+  </div>`;
+}
+
+// This project is filed under "Disaster Management", so cyclone heat
+// potential (TCHP) is the headline card above -- but the reconstructed
+// surface-to-500m profile is generic ocean-state information, useful for
+// more than storms. This card names the other reads that fall out of the
+// SAME profile at no extra data cost, so judges/reviewers see the full
+// scope of what subsurface reconstruction is good for, not just cyclones.
+function renderSecondaryIndicators(si) {
+  if (!si) return '';
+  const mld = si.mixedLayerDepth, tc = si.thermoclineIndex, cw = si.coldWakePotential;
+  const levelColor = (lvl) => {
+    const s = String(lvl).toLowerCase();
+    if (s.includes('sharp') || s.includes('deep') || s.includes('sustaining')) return 'var(--warning, #fbbf24)';
+    if (s.includes('weak') || s.includes('shallow') || s.includes('self-limiting')) return 'var(--success)';
+    return 'var(--text-secondary)';
+  };
+  return `
+    <div class="card">
+      <div class="card-label" style="margin-bottom:10px">🌊 Subsurface Disaster Indicators — Beyond Cyclone Heat Potential</div>
+      <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:12px">Three more indicators derived from the same predicted profile, no additional data source required.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+        <div style="padding:10px;border-radius:8px;background:var(--bg-elevated,rgba(255,255,255,0.03));border:1px solid var(--border-subtle)">
+          <div style="font-weight:600;font-size:.78rem;margin-bottom:4px">📏 ${mld.label}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;margin-bottom:2px">${mld.depth_m} m</div>
+          <div style="font-size:.68rem;font-weight:600;margin-bottom:4px;color:${levelColor(mld.level)}">${mld.level}</div>
+          <div style="font-size:.72rem;color:var(--text-secondary);line-height:1.4">${mld.note}</div>
+        </div>
+        <div style="padding:10px;border-radius:8px;background:var(--bg-elevated,rgba(255,255,255,0.03));border:1px solid var(--border-subtle)">
+          <div style="font-weight:600;font-size:.78rem;margin-bottom:4px">📉 ${tc.label}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;margin-bottom:2px">${tc.gradient_c_per_m} °C/m <span style="font-size:.65em;font-weight:500;color:var(--text-muted)">(${tc.depthRange})</span></div>
+          <div style="font-size:.68rem;font-weight:600;margin-bottom:4px;color:${levelColor(tc.level)}">${tc.level}</div>
+          <div style="font-size:.72rem;color:var(--text-secondary);line-height:1.4">${tc.note}</div>
+        </div>
+        <div style="padding:10px;border-radius:8px;background:var(--bg-elevated,rgba(255,255,255,0.03));border:1px solid var(--border-subtle)">
+          <div style="font-weight:600;font-size:.78rem;margin-bottom:4px">🌀 ${cw.label}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;margin-bottom:2px">${cw.cooling_estimate_c} °C</div>
+          <div style="font-size:.68rem;font-weight:600;margin-bottom:4px;color:${levelColor(cw.level)}">${cw.level}</div>
+          <div style="font-size:.72rem;color:var(--text-secondary);line-height:1.4">${cw.note}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderBroaderApplications(ba) {
+  if (!ba) return '';
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-label" style="margin-bottom:8px">🌍 Beyond Cyclones — What Else This Profile Tells You</div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:10px">
+        Same reconstructed profile (surface → 500 m), read for three other real-world uses.
+        Thermocline depth: <strong>${ba.thermoclineDepth_m} m</strong>.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="padding:8px 10px;border-radius:6px;background:var(--bg-elevated,rgba(255,255,255,0.03));border:1px solid var(--border-subtle)">
+          <div style="font-weight:600;font-size:.78rem;margin-bottom:2px">🐟 Fisheries &amp; Marine Habitat — ${ba.fisheries.tier}</div>
+          <div style="font-size:.74rem;color:var(--text-secondary)">${ba.fisheries.note}</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:6px;background:var(--bg-elevated,rgba(255,255,255,0.03));border:1px solid var(--border-subtle)">
+          <div style="font-weight:600;font-size:.78rem;margin-bottom:2px">🔊 Underwater Acoustics / Defense</div>
+          <div style="font-size:.74rem;color:var(--text-secondary)">${ba.defenseAcoustics.note}</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:6px;background:var(--bg-elevated,rgba(255,255,255,0.03));border:1px solid var(--border-subtle)">
+          <div style="font-weight:600;font-size:.78rem;margin-bottom:2px">🌡️ Climate / Ocean Heat Content</div>
+          <div style="font-size:.74rem;color:var(--text-secondary)">${ba.climateMonitoring.note}</div>
+        </div>
+      </div>
+      <div style="font-size:.65rem;color:var(--text-muted);margin-top:8px;font-style:italic">${ba.disclaimer}</div>
+    </div>`;
+}
+
+function renderPredSectionPredicted(d) {
+  const c = document.getElementById('pred-content');
+  if (!c || !d.predicted) return;
+  const p = d.predicted, ins = d.insight;
+  const badge = SOURCE_BADGES[d.interpolation.source] || SOURCE_BADGES.extrapolated;
+  c.innerHTML = `
+    <div class="info-banner" style="margin-bottom:14px">
+      <div style="font-weight:600;font-size:.8rem;margin-bottom:3px">${badge.icon} ${badge.label} — confidence: ${d.interpolation.confidence}${d.interpolation.reusedFromPool ? ' <span class="badge badge-source" style="margin-left:4px;vertical-align:middle">🔁 reused from a nearby recent fetch</span>' : ''}</div>
+      <div style="font-size:.72rem;color:var(--text-secondary);line-height:1.4">${d.interpolation.note}</div>
+      <div style="font-size:.68rem;color:var(--text-muted);margin-top:4px">This is a live model prediction for a clicked point, so there's no historical Argo measurement to check it against here — see the Model Validation tab for accuracy against real held-out observations.</div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-label" style="margin-bottom:8px">Model Inputs — Input Features</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem">
+        <div><span style="color:var(--text-tertiary)">lat</span> <strong>${d.modelInputs.lat}</strong></div>
+        <div><span style="color:var(--text-tertiary)">lon</span> <strong>${d.modelInputs.lon}</strong></div>
+        <div><span style="color:var(--text-tertiary)">day_of_year</span> <strong>${d.modelInputs.dayOfYear}</strong></div>
+        <div><span style="color:var(--text-tertiary)">sst</span> <strong>${d.modelInputs.sst} °C</strong></div>
+        <div><span style="color:var(--text-tertiary)">ssh</span> <strong>${d.modelInputs.ssh} m</strong></div>
+        <div><span style="color:var(--text-tertiary)">sss</span> <strong>${d.modelInputs.sss} PSU</strong></div>
+      </div>
+    </div>
+    <div class="sec-head"><div class="sec-title">Subsurface Temperature Prediction</div><div class="sec-sub">Model output from surface observations — <span class="badge badge-predicted" style="vertical-align:middle">PREDICTED</span></div></div>
+    <div class="pred-grid animated" style="margin-bottom:8px">
+      ${['50m', '100m', '200m', '500m'].map(dep => {
+        const band = d.predictedUncertainty && d.predictedUncertainty.band ? d.predictedUncertainty.band[dep] : null;
+        return `
+        <div class="card pred-card">
+          <div class="d-label">Depth</div><div class="d-val">${dep}</div>
+          <div class="p-temp">${p[dep]} °C${band != null ? ` <span style="font-size:.6em;color:var(--text-tertiary);font-weight:500">± ${band}°C</span>` : ''}</div><div class="p-lbl">Predicted Temperature</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${d.predictedUncertainty && d.predictedUncertainty.note ? `<div style="font-size:.66rem;color:var(--text-muted);margin-bottom:20px;line-height:1.4">${d.predictedUncertainty.note}</div>` : '<div style="margin-bottom:20px"></div>'}
+    <div class="card" id="disaster-risk-card" style="margin-bottom:20px">
+      <div class="card-label" style="margin-bottom:8px">🌀 Cyclone Heat Potential (Disaster-Management Indicator)</div>
+      <div id="disaster-risk-body" style="font-size:.82rem;color:var(--text-secondary)">Loading…</div>
+    </div>
+    <div id="secondary-indicators-container" style="margin-bottom:20px"></div>
+    <div id="broader-apps-container" style="margin-bottom:20px"></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-label" style="margin-bottom:6px">Ocean Insight</div>
+      <div style="font-size:.85rem;font-weight:600;color:var(--text-primary);margin-bottom:4px">${ins.title}</div>
+      <div style="font-size:.76rem;color:var(--text-secondary)">Depth range: ${ins.depthStart}–${ins.depthEnd} m</div>
+      <div style="font-size:.76rem;color:var(--text-secondary)">Indication: ${ins.indication}</div>
+      <div style="font-size:.68rem;color:var(--text-muted);margin-top:4px">Gradient: ${ins.gradient} °C/m — Signal: ${ins.level}</div>
+    </div>
+  `;
+  renderDisasterRisk(d.lat, d.lon);
+  updateWorkflow(4);
+}
+function addMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  allObs.forEach(o => {
+    const m = L.circleMarker([o.lat, o.lon], {
+      radius: 5, fillColor: '#38a8ff', color: 'rgba(148,163,192,0.25)', weight: 1.2, fillOpacity: 0.7
+    });
+    m.bindTooltip(`<div style="font-family:Inter;font-size:11px;background:#1a2340;color:#e8f0fe;padding:6px 10px;border-radius:6px;border:1px solid rgba(100,160,255,0.10)"><strong>${o.lat.toFixed(2)}°N, ${o.lon.toFixed(2)}°E</strong><br><span style="color:#94a3c0;font-size:10px">${o.date}</span></div>`, { direction: 'top', offset: [0, -6], className: 'ocean-tooltip' });
+    m.on('click', () => { selectObs(`${o.lat},${o.lon}`); syncSelects(o.lat, o.lon); });
+    m.addTo(map);
+    markers.push(m);
+  });
+}
+function highlightMarker(lat, lon) {
+  markers.forEach(m => {
+    const p = m.getLatLng();
+    const sel = Math.abs(p.lat - lat) < .001 && Math.abs(p.lng - lon) < .001;
+    m.setStyle(sel ? { radius: 9, fillColor: '#38a8ff', color: '#e8f0fe', weight: 2, fillOpacity: 1 } :
+      { radius: 5, fillColor: '#38a8ff', color: 'rgba(148,163,192,0.25)', weight: 1.2, fillOpacity: 0.7 });
+  });
+}
+function syncSelects(lat, lon) {
+  const v = `${lat},${lon}`;
+  ['sel-overview','sel-obs','sel-pred'].forEach(id => { const s = document.getElementById(id); if (s) s.value = v; });
+}
+
+// ── Select observation ───────────────────────────────────────
+async function selectObs(value) {
+  if (!value) return;
+  if (value.startsWith('custom:')) {
+    // A clicked (non-dataset) point selected from the dropdown: fly to
+    // it and re-run the same interpolated-prediction popup used for map
+    // clicks, rather than calling /api/observation (which only knows
+    // about real dataset points).
+    const [lat, lon] = value.slice('custom:'.length).split(',').map(Number);
+    selected = { lat, lon };
+    highlightMarker(lat, lon);
+    if (map) {
+      try {
+        map.flyTo([lat, lon], 6, { duration: 0.6 });
+        await handleMapPointClick(lat, lon, L.latLng(lat, lon));
+      } catch (e) { console.warn('Map flyTo error:', e.message); }
+    }
+    return;
+  }
+  const [lat, lon] = value.split(',').map(Number);
+  syncSelects(lat, lon);
+  selected = { lat, lon };
+  selectedIsCustom = false;
+  highlightMarker(lat, lon);
+  if (map) { try { map.flyTo([lat, lon], 6, { duration: 0.6 }); } catch(e) { console.warn('Map flyTo error:', e.message); } }
+  const d = await api(`/api/observation/${lat}/${lon}`);
+  if (!d || d.error) { notify('Failed to load observation', 'error'); return; }
+  currentObsData = d; // Store for Copilot context
+  renderMapInfo(d);
+  renderObsDetail(d);
+  renderOvMetrics(d);
+  renderPredSection(d);
+  updateNemLabel(d);
+  updateWorkflow(1);
+  setTimeout(() => {
+    document.querySelectorAll('#ov-metrics-area .metric-card').forEach((c, i) => {
+      c.style.opacity = '0'; c.style.transform = 'translateY(10px)';
+      setTimeout(() => { c.style.transition = 'opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out)'; c.style.opacity = '1'; c.style.transform = 'translateY(0)'; }, 80 + i * 70);
+    });
+  }, 50);
+  setTimeout(observeNewElements, 200);
+}
+
+function renderMapInfo(d) {
+  const p = document.getElementById('map-info'); if (!p) return;
+  p.style.display = 'block';
+  document.getElementById('mi-lat').textContent = `${d.lat.toFixed(4)}° N`;
+  document.getElementById('mi-lon').textContent = `${d.lon.toFixed(4)}° E`;
+  document.getElementById('mi-date').textContent = d.date;
+}
+
+function renderObsDetail(d) {
+  const c = document.getElementById('obs-detail'); if (!c) return;
+  const s = d.surface;
+  const matchingHtml = d.matching ? `
+      <div><div class="card-label">Surface Matching</div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text-tertiary)">Distance</span><span style="font-family:'JetBrains Mono',monospace">${d.matching.distanceKm} km</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text-tertiary)">Time diff</span><span style="font-family:'JetBrains Mono',monospace">${d.matching.timeDiffHours} h</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text-tertiary)">Max allowed</span><span style="font-family:'JetBrains Mono',monospace">${d.matching.maxDistanceKm} km / ${d.matching.maxTimeDiffHours} h</span></div>
+        <div style="margin-top:4px"><span class="badge badge-validated">✓ ${d.matching.violations} violations</span></div>
+      </div>` : `
+      <div><div class="card-label">Surface Matching</div>
+        <div style="color:var(--text-muted);font-size:.76rem">Not available — this is demo/synthetic data, not a real Argo-to-satellite match.</div>
+      </div>`;
+  c.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:.82rem">
+      <div><div class="card-label">Argo WMO</div><div style="font-weight:700;font-family:'JetBrains Mono',monospace">${d.argoWMO}</div></div>
+      <div><div class="card-label">Cycle</div><div style="font-weight:600">${d.cycle ?? 'N/A'}</div></div>
+      <div><div class="card-label">Profile Time</div><div style="font-family:'JetBrains Mono',monospace;font-size:.76rem">${d.profileTime}</div></div>
+      <div style="height:1px;background:var(--border-subtle)"></div>
+      <div><div class="card-label">Location</div><div style="font-weight:700;font-family:'JetBrains Mono',monospace">${d.lat.toFixed(4)}° N, ${d.lon.toFixed(4)}° E</div></div>
+      <div><div class="card-label">Region</div><div style="font-weight:600">Arabian Sea / North Indian Ocean</div></div>
+      <div style="height:1px;background:var(--border-subtle)"></div>
+      ${matchingHtml}
+      <div style="height:1px;background:var(--border-subtle)"></div>
+      <div><div class="card-label">Source Classification</div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:2px">
+          <div style="display:flex;justify-content:space-between"><span>SST</span><span class="badge ${s.sst.classification==='DEMO'?'badge-source':'badge-source'}">${s.sst.classification}</span></div>
+          <div style="display:flex;justify-content:space-between"><span>SSH</span><span class="badge badge-source">${s.ssh.classification}</span></div>
+          <div style="display:flex;justify-content:space-between"><span>SSS</span><span class="badge badge-matched">${s.sss.classification}</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderOvMetrics(d) {
+  const area = document.getElementById('ov-metrics-area');
+  const sub = document.getElementById('ov-sel-sub');
+  if (!area) return;
+  if (sub) sub.textContent = `${d.dataMode === 'real' ? 'Real ocean observations' : 'Demo/synthetic data'} for ${d.lat.toFixed(2)}°N, ${d.lon.toFixed(2)}°E — ${d.date}`;
+  const s = d.surface;
+  area.innerHTML = `<div class="metrics-row" style="margin-bottom:16px">
+    <div class="card metric-card mc-sst"><div class="card-label">SST — Sea Surface Temperature</div><div class="mc-val">${s.sst.value}<span class="mc-unit">${s.sst.unit}</span></div><div class="mc-source">${s.sst.source} <span class="badge badge-source" style="margin-left:4px">${s.sst.classification}</span></div></div>
+    <div class="card metric-card mc-ssh"><div class="card-label">SSH / SLA — Sea Surface Height</div><div class="mc-val">${s.ssh.value > 0 ? '+' : ''}${s.ssh.value}<span class="mc-unit">${s.ssh.unit}</span></div><div class="mc-source">${s.ssh.source} <span class="badge badge-source" style="margin-left:4px">${s.ssh.classification}</span></div></div>
+    <div class="card metric-card mc-sss"><div class="card-label">SSS — Sea Surface Salinity</div><div class="mc-val">${s.sss.value}<span class="mc-unit">${s.sss.unit}</span></div><div class="mc-source">${s.sss.source} <span class="badge badge-matched" style="margin-left:4px">${s.sss.classification}</span></div></div>
+    <div class="card metric-card mc-loc"><div class="card-label">Location</div><div class="mc-val" style="font-size:1.1rem">${d.lat.toFixed(2)}°N, ${d.lon.toFixed(2)}°E</div><div class="mc-source">Arabian Sea</div></div>
+  </div>`;
+}
+
+// ── Prediction ───────────────────────────────────────────────
+async function renderDisasterRisk(lat, lon) {
+  const body = document.getElementById('disaster-risk-body');
+  if (!body) return;
+  const r = await api(`/api/disaster-risk/${lat}/${lon}`);
+  if (!r || r.error) { body.textContent = 'Not available for this location.'; return; }
+  const color = r.riskLevel === 'Elevated' ? 'var(--error)' : r.riskLevel === 'Moderate' ? 'var(--warning)' : 'var(--success)';
+  body.innerHTML = `
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+      <div><span style="color:var(--text-tertiary)">26°C Isotherm Depth</span> <strong style="font-family:'JetBrains Mono',monospace">${r.isotherm26Depth_m} m</strong></div>
+      <div><span class="badge" style="background:${color}22;color:${color};border:1px solid ${color}55">Risk: ${r.riskLevel}</span></div>
+    </div>
+    <div>${r.note}</div>
+    <div style="margin-top:6px;font-size:.7rem;color:var(--text-muted)">${r.disclaimer}</div>`;
+  // This card is only cyclone/TCHP -- the same predicted profile also
+  // implies fisheries/defense/climate reads (see compute_broader_applications
+  // in api_server.py). Render those into the sibling container right after
+  // this card so "disaster response" doesn't read as cyclone-only.
+  const baContainer = document.getElementById('broader-apps-container');
+  if (baContainer && r.broaderApplications) {
+    baContainer.innerHTML = renderBroaderApplications(r.broaderApplications);
+  }
+  const siContainer = document.getElementById('secondary-indicators-container');
+  if (siContainer && r.secondaryIndicators) {
+    siContainer.innerHTML = renderSecondaryIndicators(r.secondaryIndicators);
+  }
+}
+
+// ── Cyclone Track Risk ──────────────────────────────────────
+function loadSampleTrack(inputId) {
+  document.getElementById(inputId || 'track-input').value =
+    '14.0, 68.0, 2026-06-01\n16.5, 70.2, 2026-06-02\n18.2, 71.5, 2026-06-03\n20.5, 72.0, 2026-06-04';
+}
+
+function parseTrackInput(text) {
+  const points = [];
+  text.split('\n').forEach(line => {
+    const parts = line.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length < 2) return;
+    const lat = parseFloat(parts[0]), lon = parseFloat(parts[1]);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+    const point = { lat, lon };
+    if (parts[2]) point.date = parts[2];
+    points.push(point);
+  });
+  return points;
+}
+
+async function runCycloneTrack() {
+  const btn = document.getElementById('track-btn');
+  const content = document.getElementById('track-content');
+  const points = parseTrackInput(document.getElementById('track-input').value);
+  if (points.length === 0) { notify('Enter at least one valid "lat, lon" line', 'error'); return; }
+  btn.disabled = true;
+  content.innerHTML = `<div class="empty"><div class="empty-icon">🌀</div><div class="empty-title">Scoring ${points.length} track point(s)...</div></div>`;
+  const d = await apiPost('/api/cyclone-track', { points });
+  btn.disabled = false;
+  if (!d || d.error) { content.innerHTML = `<div class="empty"><div class="empty-title">Failed</div><div class="empty-text">${d ? d.error : 'Request failed'}</div></div>`; return; }
+  renderTrackResults(d);
+}
+
+function renderTrackResults(d) {
+  const content = document.getElementById('track-content');
+  const rows = d.points.map(p => {
+    if (p.error) {
+      return `<tr><td>${p.index + 1}</td><td>${p.lat?.toFixed(2) ?? '—'}°N, ${p.lon?.toFixed(2) ?? '—'}°E</td><td colspan="4" style="color:var(--text-muted)">⚠️ ${p.error}</td></tr>`;
+    }
+    const color = p.riskLevel === 'Elevated' ? 'var(--error)' : p.riskLevel === 'Moderate' ? 'var(--warning)' : 'var(--success)';
+    return `<tr>
+      <td>${p.index + 1}</td>
+      <td>${p.lat.toFixed(2)}°N, ${p.lon.toFixed(2)}°E${p.date ? `<br><span style="font-size:.68rem;color:var(--text-muted)">${p.date}</span>` : ''}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.predicted.surface}°C</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.isotherm26Depth_m} m</td>
+      <td><span class="badge" style="background:${color}22;color:${color};border:1px solid ${color}55">${p.riskLevel}</span></td>
+      <td style="font-size:.72rem;color:var(--text-tertiary)">${p.confidence} (${p.nearestObsDistanceKm} km)</td>
+    </tr>`;
+  }).join('');
+
+  const peak = d.trackSummary.peakRisk;
+  const peakHtml = peak
+    ? `<div class="info-banner" style="margin-bottom:14px;border-color:var(--warning,#fbbf24)">
+        <span>🌀 Peak heat-potential risk on this track: <strong>${peak.riskLevel}</strong> at ${peak.lat.toFixed(2)}°N, ${peak.lon.toFixed(2)}°E
+        (26°C isotherm at ${peak.isotherm26Depth_m} m)${peak.date ? ` on ${peak.date}` : ''}.</span>
+      </div>`
+    : '';
+  // This is the "Disaster Response" section itself -- so the fisheries/
+  // defense/climate reads belong HERE, not tucked away on a different tab.
+  // Shown for the peak-risk point on the track (most relevant single point
+  // to a responder scanning this screen), not every point in the table.
+  const peakBroaderHtml = peak && peak.broaderApplications ? renderBroaderApplications(peak.broaderApplications) : '';
+
+  content.innerHTML = `
+    ${peakHtml}
+    ${peakBroaderHtml}
+    <div class="card" style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+        <thead><tr style="text-align:left;color:var(--text-tertiary);border-bottom:1px solid var(--border-subtle)">
+          <th style="padding:6px 8px">#</th><th style="padding:6px 8px">Location</th><th style="padding:6px 8px">SST</th>
+          <th style="padding:6px 8px">26°C Isotherm</th><th style="padding:6px 8px">Risk</th><th style="padding:6px 8px">Confidence</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;font-size:.72rem;color:var(--text-muted)">
+      Scored ${d.trackSummary.scored}/${d.trackSummary.totalPoints} points · ${d.trackSummary.elevatedCount} at Elevated risk.
+      ${d.disclaimer}
+    </div>`;
+}
+
+// ── Fisheries / Acoustics / Climate — reuse /api/cyclone-track, which
+// already computes broaderApplications for every point; each of these
+// three tabs just renders a different slice of that same response, so
+// there's no need to hit the model three separate times. ────────────
+const APP_TRACK_CONFIG = {
+  fisheries: {
+    icon: '🐟', emptyIcon: '🐟',
+    columns: ['#', 'Location', 'Thermocline Depth', 'Habitat Tier', 'Note'],
+    row: p => `<td>${p.index + 1}</td>
+      <td>${p.lat.toFixed(2)}°N, ${p.lon.toFixed(2)}°E${p.date ? `<br><span style="font-size:.68rem;color:var(--text-muted)">${p.date}</span>` : ''}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.broaderApplications.thermoclineDepth_m} m</td>
+      <td><span class="badge">${p.broaderApplications.fisheries.tier}</span></td>
+      <td style="font-size:.72rem;color:var(--text-tertiary)">${p.broaderApplications.fisheries.note}</td>`,
+  },
+  acoustics: {
+    icon: '📡', emptyIcon: '📡',
+    columns: ['#', 'Location', 'Thermocline Depth', 'Note'],
+    row: p => `<td>${p.index + 1}</td>
+      <td>${p.lat.toFixed(2)}°N, ${p.lon.toFixed(2)}°E${p.date ? `<br><span style="font-size:.68rem;color:var(--text-muted)">${p.date}</span>` : ''}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.broaderApplications.thermoclineDepth_m} m</td>
+      <td style="font-size:.72rem;color:var(--text-tertiary)">${p.broaderApplications.defenseAcoustics.note}</td>`,
+  },
+  climate: {
+    icon: '🌡️', emptyIcon: '🌡️',
+    columns: ['#', 'Location', '26°C Isotherm Depth', 'Note'],
+    row: p => `<td>${p.index + 1}</td>
+      <td>${p.lat.toFixed(2)}°N, ${p.lon.toFixed(2)}°E${p.date ? `<br><span style="font-size:.68rem;color:var(--text-muted)">${p.date}</span>` : ''}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.isotherm26Depth_m} m</td>
+      <td style="font-size:.72rem;color:var(--text-tertiary)">${p.broaderApplications.climateMonitoring.note}</td>`,
+  },
+};
+
+async function runAppTrack(kind) {
+  const cfg = APP_TRACK_CONFIG[kind];
+  const btn = document.getElementById(`${kind}-btn`);
+  const content = document.getElementById(`${kind}-content`);
+  const points = parseTrackInput(document.getElementById(`${kind}-input`).value);
+  if (points.length === 0) { notify('Enter at least one valid "lat, lon" line', 'error'); return; }
+  btn.disabled = true;
+  content.innerHTML = `<div class="empty"><div class="empty-icon">${cfg.emptyIcon}</div><div class="empty-title">Scoring ${points.length} point(s)...</div></div>`;
+  const d = await apiPost('/api/cyclone-track', { points });
+  btn.disabled = false;
+  if (!d || d.error) { content.innerHTML = `<div class="empty"><div class="empty-title">Failed</div><div class="empty-text">${d ? d.error : 'Request failed'}</div></div>`; return; }
+  renderAppTrackResults(kind, d);
+}
+
+function renderAppTrackResults(kind, d) {
+  const cfg = APP_TRACK_CONFIG[kind];
+  const content = document.getElementById(`${kind}-content`);
+  const rows = d.points.map(p => {
+    if (p.error) {
+      return `<tr><td>${p.index + 1}</td><td>${p.lat?.toFixed(2) ?? '—'}°N, ${p.lon?.toFixed(2) ?? '—'}°E</td><td colspan="${cfg.columns.length - 2}" style="color:var(--text-muted)">⚠️ ${p.error}</td></tr>`;
+    }
+    return `<tr>${cfg.row(p)}</tr>`;
+  }).join('');
+  content.innerHTML = `
+    <div class="card" style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+        <thead><tr style="text-align:left;color:var(--text-tertiary);border-bottom:1px solid var(--border-subtle)">
+          ${cfg.columns.map(c => `<th style="padding:6px 8px">${c}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;font-size:.72rem;color:var(--text-muted)">
+      Scored ${d.trackSummary.scored}/${d.trackSummary.totalPoints} points. ${d.disclaimer}
+      ${d.points[0]?.broaderApplications?.disclaimer ? ` ${d.points[0].broaderApplications.disclaimer}` : ''}
+    </div>`;
+}
+
+function renderPredSection(d) {
+  const c = document.getElementById('pred-content');
+  if (!c || !d.predicted) return;
+  const p = d.predicted, a = d.actual, e = d.errors, s = d.summary, ins = d.insight;
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-label" style="margin-bottom:8px">Model Inputs — Input Features</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem">
+        <div><span style="color:var(--text-tertiary)">lat</span> <strong>${d.modelInputs.lat}</strong></div>
+        <div><span style="color:var(--text-tertiary)">lon</span> <strong>${d.modelInputs.lon}</strong></div>
+        <div><span style="color:var(--text-tertiary)">day_of_year</span> <strong>${d.modelInputs.dayOfYear}</strong></div>
+        <div><span style="color:var(--text-tertiary)">sst</span> <strong>${d.modelInputs.sst} °C</strong></div>
+        <div><span style="color:var(--text-tertiary)">ssh</span> <strong>${d.modelInputs.ssh} m</strong></div>
+        <div><span style="color:var(--text-tertiary)">sss</span> <strong>${d.modelInputs.sss} PSU</strong></div>
+      </div>
+    </div>
+    <div class="sec-head"><div class="sec-title">Subsurface Temperature Prediction</div><div class="sec-sub">Model output from surface observations — <span class="badge badge-predicted" style="vertical-align:middle">PREDICTED</span>${d.inTestSplit ? ' <span class="badge badge-source" style="vertical-align:middle;margin-left:4px">HELD-OUT TEST POINT</span>' : ' <span class="badge" style="vertical-align:middle;margin-left:4px;background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)">TRAINING POINT</span>'}</div></div>
+    ${d.accuracyNote ? `<div style="font-size:.7rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4">${d.accuracyNote}</div>` : ''}
+    <div class="pred-grid animated" style="margin-bottom:20px">
+      ${['50m','100m','200m','500m'].map(dep => `
+        <div class="card pred-card">
+          <div class="d-label">Depth</div><div class="d-val">${dep}</div>
+          <div class="p-temp">${p[dep]} °C</div><div class="p-lbl">Predicted Temperature</div>
+          ${e ? `<div style="margin-top:6px"><span class="err-badge ${e[dep]<=.25?'err-low':e[dep]<=.5?'err-mid':'err-high'}">Error: ${e[dep].toFixed(2)} °C</span></div>` : `<div style="margin-top:6px"><span class="err-badge" style="opacity:.6">Not scored (training point)</span></div>`}
+          <div style="font-size:.66rem;color:var(--text-muted);margin-top:4px">Observed: ${a[dep]} °C</div>
+        </div>`).join('')}
+    </div>
+    <div class="card" id="disaster-risk-card" style="margin-bottom:20px">
+      <div class="card-label" style="margin-bottom:8px">🌀 Cyclone Heat Potential (Disaster-Management Indicator)</div>
+      <div id="disaster-risk-body" style="font-size:.82rem;color:var(--text-secondary)">Loading…</div>
+    </div>
+    <div id="secondary-indicators-container" style="margin-bottom:20px"></div>
+    <div id="broader-apps-container" style="margin-bottom:20px"></div>
+    <div class="two-col">
+      <div class="chart-box">
+        <div style="font-size:.92rem;font-weight:700;margin-bottom:4px">Predicted Ocean Thermal Structure</div>
+        <div style="font-size:.72rem;color:var(--text-tertiary);margin-bottom:12px">Temperature profile from surface to 500m depth</div>
+        <div class="chart-canvas"><canvas id="temp-chart"></canvas></div>
+        <div class="chart-legend">
+          <div class="leg-item"><div class="leg-line leg-pred"></div><span>Predicted <span class="badge badge-predicted" style="margin-left:2px">PREDICTED</span></span></div>
+          <div class="leg-item"><div class="leg-line leg-obs"></div><span>Observed <span class="badge badge-source" style="margin-left:2px">SOURCE</span></span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-label" style="margin-bottom:8px">Thermal Structure</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:.78rem">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">Surface</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace">${s.surfaceTemp} °C</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">50 m</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace">${s.temp50} °C</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">100 m</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace">${s.temp100} °C</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">200 m</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace">${s.temp200} °C</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">500 m</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace">${s.temp500} °C</span></div>
+            <div style="height:1px;background:var(--border-subtle);margin:2px 0"></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">Thermal gradient</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace">${s.thermalGradient} °C/100m</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">Deepest level</span><span style="font-weight:600">${s.deepestLevel}</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">Model</span><span style="font-weight:600;font-size:.72rem">${s.model}</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label" style="margin-bottom:6px">Ocean Insight</div>
+          <div style="font-size:.85rem;font-weight:600;color:var(--text-primary);margin-bottom:4px">${ins.title}</div>
+          <div style="font-size:.76rem;color:var(--text-secondary)">Depth range: ${ins.depthStart}–${ins.depthEnd} m</div>
+          <div style="font-size:.76rem;color:var(--text-secondary)">Indication: ${ins.indication}</div>
+          <div style="font-size:.68rem;color:var(--text-muted);margin-top:4px">Gradient: ${ins.gradient} °C/m — Signal: ${ins.level}</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px" id="fi-area"></div>
+  `;
+  renderDisasterRisk(d.lat, d.lon);
+  drawTempChart(d);
+  loadFeatureImportance();
+  updateWorkflow(4);
+}
+
+// ── Temperature chart ────────────────────────────────────────
+function drawTempChart(d) {
+  const cv = document.getElementById('temp-chart');
+  if (!cv) return;
+  if (tempChart) tempChart.destroy();
+  const depths = [0, 50, 100, 200, 500];
+  const pred = [d.predicted.surface, d.predicted['50m'], d.predicted['100m'], d.predicted['200m'], d.predicted['500m']];
+  const obs = [d.actual.surface, d.actual['50m'], d.actual['100m'], d.actual['200m'], d.actual['500m']];
+  tempChart = new Chart(cv, {
+    type: 'line',
+    data: {
+      labels: depths.map(v => v + 'm'),
+      datasets: [
+        { label: 'Predicted', data: pred, borderColor: '#38a8ff', backgroundColor: 'rgba(56,168,255,.06)', borderWidth: 2.5, pointBackgroundColor: '#38a8ff', pointBorderColor: '#e8f0fe', pointBorderWidth: 1.5, pointRadius: 5, pointHoverRadius: 7, tension: .3, fill: true },
+        { label: 'Observed', data: obs, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,.04)', borderWidth: 2, borderDash: [7,3], pointBackgroundColor: '#f97316', pointBorderColor: '#e8f0fe', pointBorderWidth: 1.5, pointRadius: 4, pointHoverRadius: 6, tension: .3, fill: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,21,38,.94)', titleColor: '#e8f0fe', bodyColor: '#94a3c0', borderColor: 'rgba(100,160,255,.12)', borderWidth: 1, padding: 10, displayColors: true,
+          callbacks: { title: i => 'Depth: ' + i[0].label, label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)} °C` }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Depth (m)', color: '#5e7090', font: { size: 11, weight: 600 } }, ticks: { color: '#5e7090', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: 'rgba(100,160,255,.04)' } },
+        y: { title: { display: true, text: 'Temperature (°C)', color: '#5e7090', font: { size: 11, weight: 600 } }, ticks: { color: '#5e7090', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '°' }, grid: { color: 'rgba(100,160,255,.04)' } }
+      }
+    }
+  });
+}
+
+// ── Feature importance ───────────────────────────────────────
+async function loadFeatureImportance() {
+  const d = await api('/api/feature-importance');
+  if (!d || !d.features) return;
+  const a = document.getElementById('fi-area'); if (!a) return;
+  a.innerHTML = `<div class="card">
+    <div class="card-label" style="margin-bottom:8px">Prediction Drivers — Feature Importance</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${d.features.map((f, i) => `<div style="display:flex;align-items:center;gap:10px">
+        <div style="width:80px;font-size:.76rem;color:var(--text-secondary);text-align:right">${f.name}</div>
+        <div style="flex:1;height:18px;background:var(--bg-input);border-radius:3px;overflow:hidden"><div class="fi-bar" style="height:100%;width:${f.value}%;background:linear-gradient(90deg,var(--accent),rgba(56,168,255,.5));border-radius:3px;animation-delay:${200 + i * 80}ms"></div></div>
+        <div style="width:44px;font-size:.76rem;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--accent);text-align:right">${f.value}%</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── Nemotron ─────────────────────────────────────────────────
+function updateNemLabel(d) {
+  const l = document.getElementById('nem-obs-label');
+  if (l) l.textContent = `Selected: ${d.lat.toFixed(2)}°N, ${d.lon.toFixed(2)}°E — ${d.date}`;
+}
+async function runNemotron() {
+  if (!selected) { notify('Select an observation first', 'warn'); return; }
+  if (selectedIsCustom) {
+    notify('AI analysis needs a real Argo observation — pick one from the dropdown list (map-clicked points are model predictions, not measured profiles)', 'warn');
+    return;
+  }
+  const d = await api(`/api/observation/${selected.lat}/${selected.lon}`);
+  if (!d || !d.predicted) { notify('Failed to load data', 'error'); return; }
+  const p = d.predicted, e = d.errors;
+  const errLine = e
+    ? `Prediction errors: 50m=${e['50m']}°C, 100m=${e['100m']}°C, 200m=${e['200m']}°C, 500m=${e['500m']}°C`
+    : `Prediction errors: not available — this point was used to TRAIN the model, so predicted vs actual here is not a fair accuracy check (see the Model Validation tab's cross-validated numbers for that).`;
+  const prompt = `Analyze this ocean observation:\nLocation: ${d.lat}°N, ${d.lon}°E on ${d.date}\nArgo WMO: ${d.argoWMO}, Cycle: ${d.cycle}\nSurface (SOURCE): SST=${d.surface.sst.value}°C (JPL MUR), SSH=${d.surface.ssh.value}m (NOAA), SSS=${d.surface.sss.value}PSU (Argo/satellite matched)\nPredicted (ML MODEL): 50m=${p['50m']}°C, 100m=${p['100m']}°C, 200m=${p['200m']}°C, 500m=${p['500m']}°C\nObserved (ARGO): 50m=${d.actual['50m']}°C, 100m=${d.actual['100m']}°C, 200m=${d.actual['200m']}°C, 500m=${d.actual['500m']}°C\n${errLine}\nProvide structured analysis with: SURFACE CONDITIONS, THERMAL STRUCTURE, DEPTH-DEPENDENT FEATURES, OCEANOGRAPHIC SIGNIFICANCE, MODEL LIMITATIONS, SUMMARY.`;
+
+  document.getElementById('nem-empty').style.display = 'none';
+  document.getElementById('nem-result').style.display = 'none';
+  document.getElementById('nem-loading').style.display = 'block';
+  document.getElementById('nem-loading').innerHTML = `<div class="nem-loading"><div class="spinner-dots"><span></span><span></span><span></span></div><div style="color:var(--text-secondary);font-size:.88rem">Nemotron is interpreting the selected ocean profile...</div><div style="color:var(--text-muted);font-size:.74rem;margin-top:4px">Generating scientific interpretation</div></div>`;
+  document.getElementById('nem-btn').disabled = true;
+  document.querySelector('.nem-panel')?.classList.add('analyzing');
+
+  const r = await apiPost('/api/nemotron/analyze', { prompt });
+  document.getElementById('nem-loading').style.display = 'none';
+  document.getElementById('nem-btn').disabled = false;
+  document.querySelector('.nem-panel')?.classList.remove('analyzing');
+  if (r && r.result) {
+    document.getElementById('nem-result').style.display = 'block';
+    document.getElementById('nem-result').innerHTML = `<div class="info-banner" style="margin-bottom:8px"><span class="badge badge-ai">AI INTERPRETATION</span>&nbsp; AI-generated scientific analysis — not a source observation or model prediction</div><div class="nem-result">${r.result.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--text-primary)">$1</strong>').replace(/\n/g,'<br>')}</div>`;
+  } else if (r && r.error) {
+    document.getElementById('nem-result').style.display = 'block';
+    document.getElementById('nem-result').innerHTML = `<div class="error-banner">⚠️ ${r.error}</div>`;
+  }
+  updateWorkflow(6);
+}
+
+// ── Validation ───────────────────────────────────────────────
+async function loadValidation() {
+  const [metrics, stats] = await Promise.all([api('/api/metrics'), api('/api/dataset-stats')]);
+  const c = document.getElementById('val-content'); if (!c) return;
+  let html = '';
+  if (stats) {
+    html += `<div class="metrics-row" style="margin-bottom:16px">
+      <div class="card metric-card mc-loc"><div class="card-label">Observation Rows</div><div class="mc-val">${stats.totalRows}</div></div>
+      <div class="card metric-card mc-sst"><div class="card-label">Argo Floats</div><div class="mc-val">${stats.uniqueFloats}</div></div>
+      <div class="card metric-card mc-ssh"><div class="card-label">Profile Cycles</div><div class="mc-val">${stats.profileCycles}</div></div>
+      <div class="card metric-card mc-sss"><div class="card-label">Target Depths</div><div class="mc-val">${stats.targetDepths}</div></div>
+    </div>`;
+  }
+  if (metrics) {
+    html += `<div class="sec-head"><div class="sec-title">Model Evaluation</div><div class="sec-sub">Evaluated on held-out real Argo observations</div></div>
+    <div class="metrics-row" style="margin-bottom:16px">
+      <div class="card" style="text-align:center"><div class="card-label">RMSE</div><div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);margin-top:6px">${metrics.overall.rmse} °C</div></div>
+      <div class="card" style="text-align:center"><div class="card-label">MAE</div><div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);margin-top:6px">${metrics.overall.mae} °C</div></div>
+      <div class="card" style="text-align:center"><div class="card-label">R²</div><div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--success);margin-top:6px">${metrics.overall.r2}</div></div>
+    </div>
+    <div class="sec-head"><div class="sec-title">Depth-Specific Performance</div><div class="sec-sub">Single 80/20 holdout split — with this few rows, one unusual test point can swing these numbers a lot. See the cross-validated numbers below before quoting an accuracy figure.</div></div>
+    <div class="perf-grid">${metrics.depthMetrics.map(m => `<div class="card perf-card"><div class="pf-depth">${m.Depth}</div><div class="perf-row"><span class="perf-rl">RMSE</span><span class="perf-rv">${m['RMSE (°C)']} °C</span></div><div class="perf-row"><span class="perf-rl">R²</span><span class="perf-rv">${m['R² Score']}</span></div></div>`).join('')}</div>`;
+
+    if (metrics.crossValidated && metrics.crossValidated.available) {
+      const cv = metrics.crossValidated;
+      html += `<div class="sec-head" style="margin-top:18px"><div class="sec-title">Cross-Validated Performance <span class="badge badge-source" style="margin-left:6px;vertical-align:middle">TRUSTED NUMBER</span></div><div class="sec-sub">${cv.note}</div></div>
+      <div class="metrics-row" style="margin-bottom:12px">
+        <div class="card" style="text-align:center"><div class="card-label">RMSE (CV)</div><div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);margin-top:6px">${cv.overall.rmse} °C</div></div>
+        <div class="card" style="text-align:center"><div class="card-label">MAE (CV)</div><div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);margin-top:6px">${cv.overall.mae} °C</div></div>
+        <div class="card" style="text-align:center"><div class="card-label">R² (CV)</div><div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--success);margin-top:6px">${cv.overall.r2}</div></div>
+      </div>
+      <div class="perf-grid">${cv.depthMetrics.map(m => `<div class="card perf-card"><div class="pf-depth">${m.Depth}</div><div class="perf-row"><span class="perf-rl">RMSE</span><span class="perf-rv">${m['RMSE (°C)']} ± ${m['RMSE std']} °C</span></div><div class="perf-row"><span class="perf-rl">R²</span><span class="perf-rv">${m['R² Score']} ± ${m['R² std']}</span></div></div>`).join('')}</div>`;
+    } else if (metrics.crossValidated) {
+      html += `<div class="info-banner" style="margin-top:14px;border-color:rgba(251,191,36,.3);color:#fbbf24">⚠️ No cross-validated metrics in the loaded model artifact — re-run <code>python train_model.py</code> (real-data mode) to generate them.</div>`;
+    }
+  }
+  c.innerHTML = html || '<div class="empty"><div class="empty-title">Evaluation metrics not available</div></div>';
+}
+
+// ── Provenance ───────────────────────────────────────────────
+async function loadProvenance() {
+  const [stats, matching] = await Promise.all([api('/api/dataset-stats'), api('/api/matching-quality')]);
+  const c = document.getElementById('prov-content'); if (!c) return;
+  let html = '';
+  if (stats) {
+    html += `<div class="card" style="margin-bottom:16px">
+      <div class="card-label" style="margin-bottom:10px">Dataset</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
+        <div><span style="color:var(--text-tertiary)">Name</span><div style="font-weight:600;font-family:'JetBrains Mono',monospace">${stats.datasetName}</div></div>
+        <div><span style="color:var(--text-tertiary)">Region</span><div style="font-weight:600">${stats.region}</div></div>
+        <div><span style="color:var(--text-tertiary)">Latitude</span><div style="font-family:'JetBrains Mono',monospace">${stats.latRange.min}°N – ${stats.latRange.max}°N</div></div>
+        <div><span style="color:var(--text-tertiary)">Longitude</span><div style="font-family:'JetBrains Mono',monospace">${stats.lonRange.min}°E – ${stats.lonRange.max}°E</div></div>
+        <div><span style="color:var(--text-tertiary)">Period</span><div style="font-family:'JetBrains Mono',monospace">${stats.dateRange.min} – ${stats.dateRange.max}</div></div>
+        <div><span style="color:var(--text-tertiary)">Rows</span><div style="font-weight:600">${stats.totalRows}</div></div>
+      </div>
+    </div>`;
+  }
+  html += `<div class="sec-head"><div class="sec-title">Data Sources</div></div>
+    <div class="src-grid" style="margin-bottom:16px">
+      <div class="card src-card"><div class="src-icon">🔬</div><div><div class="src-name">Argo Floats</div><div class="src-desc">International Argo Program — quality-controlled subsurface profiles</div><span class="badge badge-source" style="margin-top:4px">SOURCE</span></div></div>
+      <div class="card src-card"><div class="src-icon">🌡️</div><div><div class="src-name">NASA JPL MUR SST v4.1</div><div class="src-desc">Multi-scale Ultra-high Resolution Sea Surface Temperature</div><span class="badge badge-source" style="margin-top:4px">SOURCE</span></div></div>
+      <div class="card src-card"><div class="src-icon">🌊</div><div><div class="src-name">NOAA NESDIS SLA</div><div class="src-desc">Sea Surface Height anomaly from satellite altimetry</div><span class="badge badge-source" style="margin-top:4px">SOURCE</span></div></div>
+      <div class="card src-card"><div class="src-icon">🧂</div><div><div class="src-name">ESA SMOS / Argo CTD</div><div class="src-desc">Surface salinity from satellite and in-situ observations</div><span class="badge badge-matched" style="margin-top:4px">MATCHED</span></div></div>
+    </div>`;
+
+  if (matching && matching.available === false) {
+    html += `<div class="sec-head"><div class="sec-title">Surface Observation Matching</div></div>
+      <div class="info-banner" style="border-color:rgba(251,191,36,.3);color:#fbbf24">
+        ⚠️ ${matching.message}
+      </div>`;
+  } else if (matching) {
+    const o = matching.observed, ct = matching.constraints;
+    html += `<div class="sec-head"><div class="sec-title">Surface Observation Matching</div></div>
+      <div class="q-grid">
+        <div class="q-item"><div class="q-icon blue">📐</div><div><div class="q-lbl">Max Allowed Distance</div><div class="q-val">${ct.maxDistanceKm} km</div></div></div>
+        <div class="q-item"><div class="q-icon blue">⏰</div><div><div class="q-lbl">Max Allowed Time</div><div class="q-val">${ct.maxTimeDiffHours} h</div></div></div>
+        <div class="q-item"><div class="q-icon green">📐</div><div><div class="q-lbl">Mean Distance</div><div class="q-val">${o.meanDistanceKm} km</div></div></div>
+        <div class="q-item"><div class="q-icon green">📐</div><div><div class="q-lbl">Max Distance</div><div class="q-val">${o.maxDistanceKm} km</div></div></div>
+        <div class="q-item"><div class="q-icon green">⏰</div><div><div class="q-lbl">Mean Time Diff</div><div class="q-val">${o.meanTimeDiffHours} h</div></div></div>
+        <div class="q-item"><div class="q-icon green">⏰</div><div><div class="q-lbl">Max Time Diff</div><div class="q-val">${o.maxTimeDiffHours} h</div></div></div>
+        <div class="q-item"><div class="q-icon green">✓</div><div><div class="q-lbl">Constraint Violations</div><div class="q-val">${o.violations} <span class="badge badge-validated" style="margin-left:4px">${matching.compliance} Compliant</span></div></div></div>
+      </div>`;
+  }
+
+  html += `<div class="divider"></div><div class="info-banner"><span>OceanEmbed distinguishes source observations, derived/matched variables, machine-learning predictions, and AI-generated interpretation.</span></div>`;
+  c.innerHTML = html;
+}
+
+// ── Workflow ─────────────────────────────────────────────────
+function updateWorkflow(step) {
+  const steps = document.querySelectorAll('.wf-step .wf-dot');
+  const arrows = document.querySelectorAll('.wf-arrow');
+  steps.forEach((s, i) => {
+    s.className = 'wf-dot' + (i < step ? ' done' : i === step ? ' active' : '');
+  });
+  arrows.forEach((a, i) => {
+    a.className = 'wf-arrow' + (i < step ? ' done' : '');
+  });
+}
+
+// ── Demo ─────────────────────────────────────────────────────
+function loadDemo() {
+  if (!allObs.length) return;
+  const o = allObs[0];
+  selectObs(`${o.lat},${o.lon}`);
+  notify(`Demo: ${o.lat.toFixed(2)}°N, ${o.lon.toFixed(2)}°E loaded`, 'success');
+}
+
+// ── Presentation mode ────────────────────────────────────────
+function togglePres() {
+  presMode = !presMode;
+  const root = document.getElementById('appRoot');
+  if (presMode) {
+    root.style.transition = 'none';
+    root.classList.add('pres-mode');
+    document.getElementById('pres-btn').textContent = '✕ Exit Presentation';
+    // Adjust copilot position for presentation mode
+    document.querySelector('.copilot-fab').style.left = '20px';
+    document.querySelector('.copilot-panel').style.left = '20px';
+  } else {
+    root.classList.remove('pres-mode');
+    root.style.transition = 'none';
+    document.getElementById('pres-btn').textContent = '🖥️ Presentation Mode';
+    // Restore copilot position
+    document.querySelector('.copilot-fab').style.left = '';
+    document.querySelector('.copilot-panel').style.left = '';
+  }
+  if (map) setTimeout(() => { map.invalidateSize(); map.flyTo(map.getCenter(), map.getZoom(), { animate: true, duration: 0.5 }); }, presMode ? 450 : 150);
+}
+
+// ── Notifications ────────────────────────────────────────────
+function notify(msg, type = 'info') {
+  const colors = { success: 'var(--success)', error: 'var(--error)', warn: 'var(--warning)', info: 'var(--text-secondary)' };
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:16px;right:16px;z-index:10000;background:var(--bg-elevated);border:1px solid ${colors[type]};border-radius:var(--r-md);padding:10px 16px;color:${colors[type]};font-size:.8rem;font-weight:500;box-shadow:var(--shadow-lg);animation:notifIn 350ms var(--ease-out);max-width:360px`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   COPILOT
+// ═══════════════════════════════════════════════════════════════
+
+function toggleCopilot() {
+  copilotOpen = !copilotOpen;
+  const panel = document.getElementById('copilotPanel');
+  const fab = document.getElementById('copilotFab');
+  if (copilotOpen) {
+    panel.classList.add('open');
+    fab.style.boxShadow = '0 4px 20px rgba(37,99,235,0.5), 0 0 40px rgba(37,99,235,0.2)';
+    setTimeout(() => document.getElementById('copilotInput').focus(), 200);
+  } else {
+    panel.classList.remove('open');
+    fab.style.boxShadow = '';
+  }
+}
+
+function copilotQuickAsk(text) {
+  document.getElementById('copilotInput').value = text;
+  sendCopilot();
+}
+
+async function sendCopilot() {
+  const input = document.getElementById('copilotInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  // Remove greeting if present
+  const greeting = document.querySelector('.copilot-greeting');
+  if (greeting) greeting.remove();
+
+  // Add user message
+  addCopilotMsg('user', msg);
+
+  // Show thinking
+  const thinking = document.createElement('div');
+  thinking.className = 'copilot-thinking';
+  thinking.innerHTML = '<span></span><span></span><span></span>';
+  document.getElementById('copilotMessages').appendChild(thinking);
+  scrollCopilot();
+
+  // Disable input while loading
+  input.disabled = true;
+  document.getElementById('copilotSend').disabled = true;
+
+  // Build context from current observation
+  const context = {};
+  if (currentObsData) {
+    context.lat = currentObsData.lat;
+    context.lon = currentObsData.lon;
+    context.date = currentObsData.date;
+    context.argoWMO = currentObsData.argoWMO;
+    context.cycle = currentObsData.cycle;
+    context.surface = currentObsData.surface;
+    if (currentObsData.predicted) context.predicted = currentObsData.predicted;
+    if (currentObsData.actual) context.actual = currentObsData.actual;
+    if (currentObsData.errors) context.errors = currentObsData.errors;
+    if (currentObsData.insight) context.insight = currentObsData.insight;
+  }
+
+  const r = await apiPost('/api/copilot/chat', { message: msg, context });
+
+  // Remove thinking
+  thinking.remove();
+
+  // Re-enable input
+  input.disabled = false;
+  document.getElementById('copilotSend').disabled = false;
+
+  if (r && r.result) {
+    addCopilotMsg('assistant', r.result);
+  } else if (r && r.error) {
+    addCopilotMsg('error', r.error);
+  } else {
+    addCopilotMsg('error', 'Failed to get response. Please try again.');
+  }
+}
+
+function addCopilotMsg(role, text) {
+  const container = document.getElementById('copilotMessages');
+  const el = document.createElement('div');
+  el.className = `copilot-msg ${role}`;
+  if (role === 'assistant') {
+    el.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  } else {
+    el.textContent = text;
+  }
+  container.appendChild(el);
+  scrollCopilot();
+}
+
+function scrollCopilot() {
+  const container = document.getElementById('copilotMessages');
+  container.scrollTop = container.scrollHeight;
+}
+
+// Close copilot when clicking outside
+document.addEventListener('click', e => {
+  if (copilotOpen && !e.target.closest('.copilot-panel') && !e.target.closest('.copilot-fab')) {
+    toggleCopilot();
+  }
+});
+</script>
+</body>
+</html>

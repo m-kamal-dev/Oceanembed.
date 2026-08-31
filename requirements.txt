@@ -1,0 +1,33 @@
+# --- Core data / ML (pipeline + training) ---
+pandas
+numpy
+scipy
+scikit-learn
+lightgbm
+pyarrow          # parquet read/write used by the real-data pipeline
+
+# --- Real data acquisition ---
+argopy            # real Argo float discovery + download (data/argo_fetch.py)
+xarray
+netCDF4
+h5netcdf
+gsw               # TEOS-10 pressure -> depth conversion (data/argo_preprocess.py)
+requests
+
+# --- Land masking ---
+shapely
+pyshp             # imported as `shapefile` in land_mask.py
+
+# --- Web API + frontend serving ---
+flask
+flask-cors
+
+# --- Optional: Nemotron AI reasoning layer (api_server.py) ---
+# Requires NEMOTRON_API_KEY, set via .env, a real env var, or
+# .streamlit/secrets.toml. App runs fine without it, just with the
+# "AI Offline" badge on the Copilot panel.
+openai
+python-dotenv
+
+# --- Dev / test (used by tests/, run in CI — see .github/workflows/tests.yml) ---
+pytest

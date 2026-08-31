@@ -1,0 +1,14 @@
+# Secrets — never commit real API keys
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data artifacts (large/generated)
+data/raw/
+data/processed/
+data/dataset/
