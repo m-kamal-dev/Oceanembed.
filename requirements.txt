@@ -31,3 +31,4 @@ python-dotenv
 
 # --- Dev / test (used by tests/, run in CI — see .github/workflows/tests.yml) ---
 pytest
+gunicorn
